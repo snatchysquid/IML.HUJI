@@ -103,7 +103,7 @@ class UnivariateGaussian:
 
         # using efficient log-likelihood formula (applying the log at
         # the start instead of calculating log(exp(...)) at the end)
-        sigma_log = np.log((2*np.pi*sigma**2)**(X.shape[0] / 2))
+        sigma_log = (X.shape[0] / 2) * np.log((2*np.pi*sigma**2))
         exponent_sum = 1 / (2 * sigma**2) * np.sum((X - mu)**2)
         return -(sigma_log + exponent_sum)
 
@@ -211,8 +211,8 @@ class MultivariateGaussian:
         # (x-mu)^T * inv(cov) * (x-mu) = (x-mu)^T * first_term
         # Note: timing different methods has shown that einsum is faster than other methods
         exponent = np.einsum('ij, ij -> i', first_term, shifted_x)
-        exponent_sum = -0.5 * np.sum(exponent)
+        exponent_sum = 0.5 * np.sum(exponent)
 
-        res = np.log(1 / ((2*np.pi) ** X.shape[1] * np.linalg.det(cov)) ** (X.shape[1] / 2)) + exponent_sum
+        res = exponent_sum + (X.shape[0] / 2) * np.log((2*np.pi) ** X.shape[1] * np.linalg.det(cov))
 
-        return res
+        return -res
