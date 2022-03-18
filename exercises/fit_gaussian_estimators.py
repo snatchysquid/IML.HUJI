@@ -25,9 +25,12 @@ def test_univariate_gaussian():
 
     # Question 2 - Empirically showing sample mean is consistent
     expectations = np.zeros(100)
+
     for ind, i in enumerate(range(10, 1010, 10)):
         uni_est.fit(X[:i])
         expectations[ind] = uni_est.mu_
+
+
 
     expectations -= MU
 
@@ -86,6 +89,7 @@ def test_multivariate_gaussian():
     for i in range(len(mu_values)):
         result[i] = multi_est.log_likelihood(mu_values[i], SIGMA, X)
 
+
     # plot heatmap
     # #### ANOTHER VERSION OF THE GRAPH LEFT FOR THE READER OF THE CODE ####
     # fig = px.density_heatmap(x=org_mu_values[:, 0], y=org_mu_values[:, 1], z=result,
@@ -105,8 +109,8 @@ def test_multivariate_gaussian():
                                         size=1000
                                     )),
                     layout=go.Layout(title="Log likelihood of each mu value",
-                                     xaxis=dict(title="mu1"),
-                                     yaxis=dict(title="mu2"),
+                                     xaxis=dict(title="f3"),
+                                     yaxis=dict(title="f1"),
                                      width=800,
                                      height=800))
     fig.show()
