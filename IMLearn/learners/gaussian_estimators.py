@@ -53,9 +53,7 @@ class UnivariateGaussian:
         """
 
         self.mu_ = np.mean(X)
-        self.var_ = np.var(X) if self.biased_ else np.var(X, ddof=1)
-
-        # raise NotImplementedError()
+        self.var_ = np.var(X) if self.biased_ else np.var(X, ddof=1)  # divide by m or m-1 if unbiased
 
         self.fitted_ = True
         return self
@@ -103,9 +101,11 @@ class UnivariateGaussian:
             log-likelihood calculated
         """
 
-        #
-        X = (1 / np.sqrt(2 * np.pi * sigma ** 2)) * np.exp(- (X - mu) ** 2 / (2 * sigma ** 2))
-        return np.log(np.prod(X))
+        # using efficient log-likelihood formula (applying the log at
+        # the start instead of calculating log(exp(...)) at the end)
+        sigma_log = np.log((2*np.pi*sigma**2)**(X.shape[0] / 2))
+        exponent_sum = 1 / (2 * sigma**2) * np.sum((X - mu)**2)
+        return -(sigma_log + exponent_sum)
 
 
 class MultivariateGaussian:
@@ -201,11 +201,18 @@ class MultivariateGaussian:
             log-likelihood calculated
         """
 
+        # using efficient log-likelihood formula (applying the log at
+        # the start instead of calculating log(exp(...)) at the end)
         shifted_x = X - mu
+
+        # (x-mu)^T * inv(cov)
         first_term = np.dot(shifted_x, np.linalg.inv(cov).T)
 
+        # (x-mu)^T * inv(cov) * (x-mu) = (x-mu)^T * first_term
+        # Note: timing different methods has shown that einsum is faster than other methods
         exponent = np.einsum('ij, ij -> i', first_term, shifted_x)
         exponent_sum = -0.5 * np.sum(exponent)
+
         res = np.log(1 / ((2*np.pi) ** X.shape[1] * np.linalg.det(cov)) ** (X.shape[1] / 2)) + exponent_sum
 
         return res
