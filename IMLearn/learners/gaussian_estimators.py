@@ -178,8 +178,8 @@ class MultivariateGaussian:
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `pdf` function")
 
-        return (1 / ((2 * np.pi) ** (X.shape[1] / 2) * np.sqrt(np.linalg.det(self.cov_)))) * np.exp(
-                    -0.5 * (X - self.mu_).T @ np.linalg.inv(self.cov_) @ (X - self.mu_))
+        return (1 / np.sqrt((2 * np.pi) ** X.shape[1] * np.linalg.det(self.cov_))) * np.exp(
+            -0.5 * np.sum((X - self.mu_).T * (np.linalg.inv(self.cov_) @ (X - self.mu_).T), axis=0))
 
     @staticmethod
     def log_likelihood(mu: np.ndarray, cov: np.ndarray, X: np.ndarray) -> float:
