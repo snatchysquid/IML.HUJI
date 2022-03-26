@@ -1,16 +1,7 @@
-from learners.gaussian_estimators import *
+from metrics.loss_functions import mean_square_error
+import numpy as np
 
-def univariate():
+y = np.array([1, 2])
+y_pred = np.array([8, 2])
 
-
-
-
-def ex1():
-    univariate()
-
-
-def main():
-    ex1()
-
-if __name__ == '__main__':
-    main()
+print(mean_square_error(y, y_pred))

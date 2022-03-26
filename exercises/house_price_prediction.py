@@ -9,6 +9,8 @@ import plotly.express as px
 import plotly.io as pio
 pio.templates.default = "simple_white"
 
+from plotly.subplots import make_subplots
+
 
 def load_data(filename: str):
     """
@@ -23,8 +25,38 @@ def load_data(filename: str):
     Design matrix and response vector (prices) - either as a single
     DataFrame or a Tuple[DataFrame, Series]
     """
-    raise NotImplementedError()
+    df = pd.read_csv(filename)
 
+    # hard to do any prediction using id, zipcode which don't have a natural order
+    df = df.drop(columns=["id", "zipcode"])
+
+    # clear out missing values
+    df = df.dropna()
+
+    # remove rows with negative price
+    df = df[df.price > 0]
+
+    # remove rows where sqft_living is greater than sqft_lot
+    df = df[df.sqft_living <= df.sqft_lot]
+
+    # remove rows where sqft_above is greater than sqft_living
+    df = df[df.sqft_above <= df.sqft_living]
+
+    # remove rows where sqft_basement is greater than sqft_living
+    df = df[df.sqft_basement <= df.sqft_living]
+
+    # remove rows where there are more than 3 bedrooms but sqft_living is less than 700
+    df = df[~((df.bedrooms > 3) & (df.sqft_living < 700))]
+
+
+
+    # split into X and y
+    X = df.drop(columns=["price"])
+    y = df["price"]
+
+    return df
+
+    return X, y
 
 def feature_evaluation(X: pd.DataFrame, y: pd.Series, output_path: str = ".") -> NoReturn:
     """
@@ -46,9 +78,37 @@ def feature_evaluation(X: pd.DataFrame, y: pd.Series, output_path: str = ".") ->
     raise NotImplementedError()
 
 
+####################
+# CUSTOM FUNCTIONS #
+####################
+
+def plot_cols(df: pd.DataFrame) -> NoReturn:
+    """
+    create subplot of each column in the df as histogram
+    Parameters
+    ----------
+    df : DataFrame
+        Dataframe to plot
+    """
+    sqrt_len = int(np.sqrt(len(df.columns)))
+    fig = make_subplots(rows=sqrt_len+1, cols=sqrt_len+1,
+                        subplot_titles="empty")
+
+    for i, col in enumerate(df.columns):
+        fig.add_trace(go.Histogram(x=df[col], name=col), row=1 + i % sqrt_len, col=1 + i // sqrt_len)
+
+    # save plot as html
+    fig.write_html(f"house_plot.html")
+    fig.show()
+
+
 if __name__ == '__main__':
     np.random.seed(0)
     # Question 1 - Load and preprocessing of housing prices dataset
+    df = load_data("../datasets/house_prices.csv")  # todo: is this the right dataset?
+
+    # plot_cols(df)
+
     raise NotImplementedError()
 
     # Question 2 - Feature evaluation with respect to response
