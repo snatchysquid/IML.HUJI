@@ -44,7 +44,7 @@ def run_perceptron():
     Create a line plot that shows the perceptron algorithm's training loss values (y-axis)
     as a function of the training iterations (x-axis).
     """
-    for n, f in [("Linearl                                            y Separable", "linearly_separable.npy"),
+    for n, f in [("Linearly Separable", "linearly_separable.npy"),
                  ("Linearly Inseparable", "linearly_inseparable.npy")]:
         # Load dataset 
         X, y = load_dataset("../datasets/" + f)
@@ -57,7 +57,7 @@ def run_perceptron():
             # the sample_x, sample_y are unused and not needed
             losses.append(fit._loss(X, y))
 
-        perceptron = Perceptron(include_intercept=True, max_iter=100, callback=perceptron_callback)
+        perceptron = Perceptron(include_intercept=False, max_iter=1000, callback=perceptron_callback)
         perceptron.fit(X, y)
 
         # Plot figure
@@ -118,17 +118,20 @@ def compare_gaussian_classifiers():
         fig = make_subplots(rows=2).update_layout(title=f"Prediction on a {f.split('.')[0]} dataset")
 
         fig.add_trace(
-            go.Scatter(x=X[:, 0], y=X[:, 1], mode='markers', marker=dict(color=lda_pred), marker_symbol=(lda_pred == y).astype(int),
+            go.Scatter(x=X[:, 0], y=X[:, 1], mode='markers', marker=dict(color=lda_pred),
+                       marker_symbol=(lda_pred == y).astype(int),
                        name=f"LDA prediction, with accuracy {lda_acc}"), row=1, col=1)
 
         # add ellipse
         for _class in lda.classes_:
             fig.add_trace(get_ellipse(lda.mu_[_class], lda.cov_), row=1, col=1)
             # add center point
-            fig.add_trace(go.Scatter(x=[lda.mu_[_class][0]], y=[lda.mu_[_class][1]], mode="markers", marker=dict(symbol="x", size=10, color="black")), row=1, col=1)
+            fig.add_trace(go.Scatter(x=[lda.mu_[_class][0]], y=[lda.mu_[_class][1]], mode="markers",
+                                     marker=dict(symbol="x", size=10, color="black")), row=1, col=1)
 
         fig.add_trace(
-            go.Scatter(x=X[:, 0], y=X[:, 1], mode='markers', marker=dict(color=gnb_pred), marker_symbol=(gnb_pred == y).astype(int),
+            go.Scatter(x=X[:, 0], y=X[:, 1], mode='markers', marker=dict(color=gnb_pred),
+                       marker_symbol=(gnb_pred == y).astype(int),
                        name=f"GNB prediction, with accuracy {gnb_acc}"), row=2, col=1)
 
         # edit axis labels
@@ -141,7 +144,8 @@ def compare_gaussian_classifiers():
         for _class in gnb.classes_:
             fig.add_trace(get_ellipse(gnb.mu_[_class], np.diag(gnb.vars_[_class])), row=2, col=1)
             # add center point
-            fig.add_trace(go.Scatter(x=[gnb.mu_[_class][0]], y=[gnb.mu_[_class][1]], mode="markers", marker=dict(symbol="x", size=10, color="black")), row=2, col=1)
+            fig.add_trace(go.Scatter(x=[gnb.mu_[_class][0]], y=[gnb.mu_[_class][1]], mode="markers",
+                                     marker=dict(symbol="x", size=10, color="black")), row=2, col=1)
 
         fig.show()
 
@@ -178,8 +182,34 @@ def test():
     print(gnb.pi_)
 
 
+def quiz():
+    S = np.array([[0, 0], [0, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 2], [7, 2]])
+    X = S[:, 0]
+    y = S[:, 1]
+
+    gnb = GaussianNaiveBayes()
+    gnb.fit(X, y)
+    print(np.round(gnb.pi_[0], 2))
+    print(np.round(gnb.mu_[1][0], 2))
+
+    S = np.array([[1, 1, 0], [1, 2, 0], [2, 3, 1], [2, 4, 1], [3, 3, 1], [3, 4, 1]])
+    X = S[:, :-1]
+    y = S[:, -1]
+
+    gnb = GaussianNaiveBayes()
+    gnb.fit(X, y)
+    print(np.round(gnb.vars_[0, 1], 2))
+    print(np.round(gnb.vars_[1, 1], 2))
+
+    S = np.array([(0, 0), (1, 0), (2, 1), (3, 1), (4, 1), (5, 1), (6, 2), (7, 2)])
+    print((6+7) / 2)
+    print(52)
+    print(True)
+
+
 if __name__ == '__main__':
     np.random.seed(0)
-    # run_perceptron()
+    run_perceptron()
     # compare_gaussian_classifiers()
-    test()
+    # test()
+    quiz()

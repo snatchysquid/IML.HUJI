@@ -40,7 +40,10 @@ class GaussianNaiveBayes(BaseEstimator):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        self.classes_ = np.unique(y).astype(int)
+        if len(X.shape) == 1:
+            X = X.reshape(-1, 1)
+
+        self.classes_ = np.unique(y)
         self.mu_ = np.zeros((self.classes_.size, X.shape[1]))
         self.vars_ = np.zeros((self.classes_.size, X.shape[1]))
         dataset = np.concatenate((X, y.reshape(-1, 1)), axis=1)
@@ -48,8 +51,13 @@ class GaussianNaiveBayes(BaseEstimator):
         self.pi_ = np.array([np.sum(dataset[:, -1] == _class) for _class in self.classes_]) / len(dataset)
 
         for i, _class in enumerate(self.classes_):
-            self.mu_[i] = np.mean(dataset[dataset[:, -1] == _class][:, :-1], axis=0)
-            self.vars_[i] = np.var(dataset[dataset[:, -1] == _class][:, :-1], axis=0, ddof=1)
+            slice_dataset = dataset[dataset[:, -1] == _class][:, :-1]
+
+            # set ddof in case we have a single sample from that class
+            ddof = 0 if slice_dataset.shape[0] == 1 else 1
+
+            self.mu_[i] = np.mean(slice_dataset, axis=0)
+            self.vars_[i] = np.var(slice_dataset, axis=0, ddof=ddof)
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -87,6 +95,9 @@ class GaussianNaiveBayes(BaseEstimator):
         """
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `likelihood` function")
+
+        if len(X.shape) == 1:
+            X = X.reshape(-1, 1)
 
         likelihoods = np.zeros((X.shape[0], self.classes_.size))
         sigma_prod = 1 / np.prod(np.sqrt(self.vars_), axis=1)

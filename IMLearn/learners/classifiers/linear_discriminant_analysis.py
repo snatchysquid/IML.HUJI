@@ -47,7 +47,10 @@ class LDA(BaseEstimator):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        self.classes_ = np.unique(y).astype(int)
+        if len(X.shape) == 1:
+            X = X.reshape(-1, 1)
+
+        self.classes_ = np.unique(y)
 
         dataset = np.concatenate((X, y.reshape(-1, 1)), axis=1)
         self.mu_ = np.array([np.mean(dataset[dataset[:, -1] == label][:, :-1], axis=0) for label in self.classes_])
@@ -104,6 +107,9 @@ class LDA(BaseEstimator):
         """
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `likelihood` function")
+
+        if len(X.shape) == 1:
+            X = X.reshape(-1, 1)
 
         likelihoods = np.zeros((X.shape[0], len(self.classes_)))
 
