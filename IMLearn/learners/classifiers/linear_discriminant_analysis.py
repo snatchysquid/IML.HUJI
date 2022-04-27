@@ -47,7 +47,7 @@ class LDA(BaseEstimator):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        self.classes_ = np.unique(y)
+        self.classes_ = np.unique(y).astype(int)
 
         dataset = np.concatenate((X, y.reshape(-1, 1)), axis=1)
         self.mu_ = np.array([np.mean(dataset[dataset[:, -1] == label][:, :-1], axis=0) for label in self.classes_])

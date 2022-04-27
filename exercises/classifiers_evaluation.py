@@ -81,7 +81,8 @@ def get_ellipse(mu: np.ndarray, cov: np.ndarray):
         scatter: A plotly trace object of the ellipse
     """
     l1, l2 = tuple(np.linalg.eigvalsh(cov)[::-1])
-    theta = atan2(l1 - cov[0, 0], cov[0, 1]) if cov[0, 1] != 0 else (np.pi / 2 if cov[0, 0] < cov[1, 1] else 0)
+    theta = atan2(l1 - cov[0, 0], cov[0, 1]) if cov[0, 1] != 0 else (
+        np.pi / 2 if cov[0, 0] < cov[1, 1] else 0)
     t = np.linspace(0, 2 * pi, 100)
     xs = (l1 * np.cos(theta) * np.cos(t)) - (l2 * np.sin(theta) * np.sin(t))
     ys = (l1 * np.sin(theta) * np.cos(t)) + (l2 * np.cos(theta) * np.sin(t))
@@ -114,13 +115,35 @@ def compare_gaussian_classifiers():
         gnb_pred = gnb.predict(X)
         gnb_acc = accuracy(gnb_pred, y)
 
-        fig = make_subplots(rows=2).update_layout(title=f"LDA prediction on a {f.split('.')[0]} dataset")
+        fig = make_subplots(rows=2).update_layout(title=f"Prediction on a {f.split('.')[0]} dataset")
+
         fig.add_trace(
-            go.Scatter(x=X[:, 0], y=X[:, 1], marker=lda_pred, name=f"LDA prediction, with accuracy {lda_acc}") \
-                .update_xaxes(title="Feature 1") \
-                .update_yaxes(title="Feature 2"), row=1, col=1)
+            go.Scatter(x=X[:, 0], y=X[:, 1], mode='markers', marker=dict(color=lda_pred), marker_symbol=(lda_pred == y).astype(int),
+                       name=f"LDA prediction, with accuracy {lda_acc}"), row=1, col=1)
 
+        # add ellipse
+        for _class in lda.classes_:
+            fig.add_trace(get_ellipse(lda.mu_[_class], lda.cov_), row=1, col=1)
+            # add center point
+            fig.add_trace(go.Scatter(x=[lda.mu_[_class][0]], y=[lda.mu_[_class][1]], mode="markers", marker=dict(symbol="x", size=10, color="black")), row=1, col=1)
 
+        fig.add_trace(
+            go.Scatter(x=X[:, 0], y=X[:, 1], mode='markers', marker=dict(color=gnb_pred), marker_symbol=(gnb_pred == y).astype(int),
+                       name=f"GNB prediction, with accuracy {gnb_acc}"), row=2, col=1)
+
+        # edit axis labels
+        fig['layout']['xaxis']['title'] = 'Feature 1'
+        fig['layout']['xaxis2']['title'] = 'Feature 1'
+        fig['layout']['yaxis']['title'] = 'Feature 2'
+        fig['layout']['yaxis2']['title'] = 'Feature 2'
+
+        # add ellipse
+        for _class in gnb.classes_:
+            fig.add_trace(get_ellipse(gnb.mu_[_class], np.diag(gnb.vars_[_class])), row=2, col=1)
+            # add center point
+            fig.add_trace(go.Scatter(x=[gnb.mu_[_class][0]], y=[gnb.mu_[_class][1]], mode="markers", marker=dict(symbol="x", size=10, color="black")), row=2, col=1)
+
+        fig.show()
 
 
 def test():
@@ -158,5 +181,5 @@ def test():
 if __name__ == '__main__':
     np.random.seed(0)
     # run_perceptron()
-    # compare_gaussian_classifiers()
-    test()
+    compare_gaussian_classifiers()
+    # test()
