@@ -2,6 +2,7 @@ from typing import NoReturn
 from ...base import BaseEstimator
 import numpy as np
 from numpy.linalg import det, inv
+from ...metrics import misclassification_error
 
 
 class LDA(BaseEstimator):
@@ -46,7 +47,24 @@ class LDA(BaseEstimator):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        raise NotImplementedError()
+        self.classes_ = np.unique(y)
+
+        dataset = np.concatenate((X, y.reshape(-1, 1)), axis=1)
+        self.mu_ = np.array([np.mean(dataset[dataset[:, -1] == label][:, :-1], axis=0) for label in self.classes_])
+
+        self.cov_ = np.zeros((X.shape[1], X.shape[1]))
+
+
+        for i_sample in range(X.shape[0]):
+            normalized = X[i_sample] - self.mu_[int(y[i_sample])]
+            self.cov_ += np.outer(normalized, normalized)
+
+        self.cov_ /= X.shape[0]
+
+        self._cov_inv = inv(self.cov_)
+
+        self.pi_ = np.array([np.sum(dataset[:, -1] == _class) for _class in self.classes_]) / len(dataset)
+
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -62,7 +80,11 @@ class LDA(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        raise NotImplementedError()
+        a_classes = self._cov_inv @ self.mu_.T
+        b_classes = np.log(self.pi_) - 0.5 * np.sum(self.mu_.T * (np.linalg.inv(self.cov_) @ self.mu_.T), axis=0)
+
+        results = X @ a_classes + b_classes
+        return np.argmax(results, axis=1)
 
     def likelihood(self, X: np.ndarray) -> np.ndarray:
         """
@@ -82,7 +104,16 @@ class LDA(BaseEstimator):
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `likelihood` function")
 
-        raise NotImplementedError()
+        likelihoods = np.zeros((X.shape[0], len(self.classes_)))
+
+        for _class in self.classes_:
+            class_samples = X - self.mu_[int(_class)]
+            likelihoods[:, int(_class)] = np.exp(-0.5 * np.sum(class_samples.T * (np.linalg.inv(self.cov_) @ class_samples.T), axis=0))
+
+        likelihoods /= np.sqrt(np.linalg.det(self.cov_) * (2 * np.pi) ** X.shape[1])
+        likelihoods *= self.pi_
+
+        return likelihoods
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
@@ -101,4 +132,4 @@ class LDA(BaseEstimator):
         loss : float
             Performance under missclassification loss function
         """
-        raise NotImplementedError()
+        return misclassification_error(y, self.predict(X))

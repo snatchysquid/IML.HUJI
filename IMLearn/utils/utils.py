@@ -33,7 +33,19 @@ def split_train_test(X: pd.DataFrame, y: pd.Series, train_proportion: float = .2
         Responses of test samples
 
     """
-    raise NotImplementedError()
+    train_size = int(np.ceil(train_proportion * X.shape[0]))
+
+    # get indices of training and testing samples
+    train_idx = np.random.choice(X.index, train_size, replace=False)
+    test_idx = np.setdiff1d(X.index, train_idx)  # get the rest of that indices(values are unique so we don't lose indices)
+
+    # split data
+    train_X = X.loc[train_idx]
+    train_y = y.loc[train_idx]
+    test_X = X.loc[test_idx]
+    test_y = y.loc[test_idx]
+
+    return train_X, train_y, test_X, test_y
 
 
 def confusion_matrix(a: np.ndarray, b: np.ndarray) -> np.ndarray:
