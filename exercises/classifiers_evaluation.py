@@ -148,10 +148,10 @@ def compare_gaussian_classifiers():
 
 def test():
     X, y = load_dataset("../datasets/" + "gaussian1.npy")
-    likely_X = X[-5:]
-    likely_y = y[-5:]
-    X = X[:15]
-    y = y[:15]
+    likely_X = X[-50:]
+    likely_y = y[-50:]
+    X = X[:150]
+    y = y[:150]
 
     # LDA SHIT
     print("LDA shit")
@@ -181,5 +181,5 @@ def test():
 if __name__ == '__main__':
     np.random.seed(0)
     # run_perceptron()
-    compare_gaussian_classifiers()
-    # test()
+    # compare_gaussian_classifiers()
+    test()

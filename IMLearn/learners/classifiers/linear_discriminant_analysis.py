@@ -56,10 +56,11 @@ class LDA(BaseEstimator):
 
 
         for i_sample in range(X.shape[0]):
-            normalized = X[i_sample] - self.mu_[int(y[i_sample])]
+            # normalized = X[i_sample] - self.mu_[int(y[i_sample])]
+            normalized = X[i_sample] - self.mu_[np.where(self.classes_ == y[i_sample])[0]]
             self.cov_ += np.outer(normalized, normalized)
 
-        self.cov_ /= X.shape[0]
+        self.cov_ /= X.shape[0] - self.classes_.shape[0]
 
         self._cov_inv = inv(self.cov_)
 
@@ -81,10 +82,10 @@ class LDA(BaseEstimator):
             Predicted responses of given samples
         """
         a_classes = self._cov_inv @ self.mu_.T
-        b_classes = np.log(self.pi_) - 0.5 * np.sum(self.mu_.T * (np.linalg.inv(self.cov_) @ self.mu_.T), axis=0)
+        b_classes = np.log(self.pi_) - 0.5 * np.sum(self.mu_.T * (self._cov_inv @ self.mu_.T), axis=0)
 
         results = X @ a_classes + b_classes
-        return np.argmax(results, axis=1)
+        return self.classes_[np.nanargmax(results, axis=1)]
 
     def likelihood(self, X: np.ndarray) -> np.ndarray:
         """
@@ -106,9 +107,9 @@ class LDA(BaseEstimator):
 
         likelihoods = np.zeros((X.shape[0], len(self.classes_)))
 
-        for _class in self.classes_:
-            class_samples = X - self.mu_[int(_class)]
-            likelihoods[:, int(_class)] = np.exp(-0.5 * np.sum(class_samples.T * (np.linalg.inv(self.cov_) @ class_samples.T), axis=0))
+        for i in range(self.classes_.shape[0]):
+            class_samples = X - self.mu_[i]
+            likelihoods[:, i] = np.exp(-0.5 * np.sum(class_samples.T * (self._cov_inv @ class_samples.T), axis=0))
 
         likelihoods /= np.sqrt(np.linalg.det(self.cov_) * (2 * np.pi) ** X.shape[1])
         likelihoods *= self.pi_

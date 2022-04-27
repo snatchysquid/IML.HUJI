@@ -47,9 +47,9 @@ class GaussianNaiveBayes(BaseEstimator):
 
         self.pi_ = np.array([np.sum(dataset[:, -1] == _class) for _class in self.classes_]) / len(dataset)
 
-        for _class in self.classes_:
-            self.mu_[_class] = np.mean(dataset[dataset[:, -1] == _class][:, :-1], axis=0)
-            self.vars_[_class] = np.var(dataset[dataset[:, -1] == _class][:, :-1], axis=0)
+        for i, _class in enumerate(self.classes_):
+            self.mu_[i] = np.mean(dataset[dataset[:, -1] == _class][:, :-1], axis=0)
+            self.vars_[i] = np.var(dataset[dataset[:, -1] == _class][:, :-1], axis=0, ddof=1)
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -66,7 +66,7 @@ class GaussianNaiveBayes(BaseEstimator):
             Predicted responses of given samples
         """
         likelihoods = self.likelihood(X)
-        return np.nanargmax(likelihoods, axis=1)
+        return self.classes_[np.nanargmax(likelihoods, axis=1)]
 
 
 
@@ -91,9 +91,9 @@ class GaussianNaiveBayes(BaseEstimator):
         likelihoods = np.zeros((X.shape[0], self.classes_.size))
         sigma_prod = 1 / np.prod(np.sqrt(self.vars_), axis=1)
 
-        for _class in self.classes_:
-            exp_part = np.exp(-0.5 * np.sum((X - self.mu_[_class]) ** 2 / self.vars_[_class], axis=1))
-            likelihoods[:, _class] = sigma_prod[_class] * exp_part / ((2 * np.pi) ** (X.shape[1] / 2))
+        for i in range(self.classes_.shape[0]):
+            exp_part = np.exp(-0.5 * np.sum((X - self.mu_[i]) ** 2 / self.vars_[i], axis=1))
+            likelihoods[:, i] = sigma_prod[i] * exp_part / ((2 * np.pi) ** (X.shape[1] / 2))
 
         likelihoods *= self.pi_
         return likelihoods
