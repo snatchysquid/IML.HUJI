@@ -57,11 +57,13 @@ def run_perceptron():
             # the sample_x, sample_y are unused and not needed
             losses.append(fit._loss(X, y))
 
-        perceptron = Perceptron(include_intercept=False, max_iter=1000, callback=perceptron_callback)
+        max_iter = 200
+
+        perceptron = Perceptron(include_intercept=True, max_iter=max_iter, callback=perceptron_callback)
         perceptron.fit(X, y)
 
         # Plot figure
-        fig = px.line(x=np.arange(len(losses)), y=losses, title=f"Perceptron algorithm on a {n} dataset") \
+        fig = px.line(x=np.arange(len(losses)), y=losses, title=f"Perceptron algorithm on a {n} dataset, with at most {max_iter} iterations") \
             .update_xaxes(title="Iteration") \
             .update_yaxes(title="Misclassification Error")
         fig.show()
@@ -115,15 +117,14 @@ def compare_gaussian_classifiers():
         gnb_pred = gnb.predict(X)
         gnb_acc = accuracy(gnb_pred, y)
 
-        fig = make_subplots(rows=2).update_layout(title=f"Prediction on a {f.split('.')[0]} dataset")
+        fig = make_subplots(cols=2, subplot_titles=(f"LDA prediction, with accuracy {lda_acc}", f"GNB prediction, with accuracy {gnb_acc}")).update_layout(title=f"Prediction on {f.split('.')[0]} dataset")
 
         fig.add_trace(
             go.Scatter(x=X[:, 0], y=X[:, 1], mode='markers', marker=dict(color=lda_pred),
-                       marker_symbol=(lda_pred == y).astype(int),
-                       name=f"LDA prediction, with accuracy {lda_acc}"), row=1, col=1)
+                       marker_symbol=(lda_pred == y).astype(int)), row=1, col=1)
 
         # add ellipse
-        for _class in lda.classes_:
+        for _class in range(len(lda.classes_)):
             fig.add_trace(get_ellipse(lda.mu_[_class], lda.cov_), row=1, col=1)
             # add center point
             fig.add_trace(go.Scatter(x=[lda.mu_[_class][0]], y=[lda.mu_[_class][1]], mode="markers",
@@ -131,8 +132,7 @@ def compare_gaussian_classifiers():
 
         fig.add_trace(
             go.Scatter(x=X[:, 0], y=X[:, 1], mode='markers', marker=dict(color=gnb_pred),
-                       marker_symbol=(gnb_pred == y).astype(int),
-                       name=f"GNB prediction, with accuracy {gnb_acc}"), row=2, col=1)
+                       marker_symbol=(gnb_pred == y).astype(int)), row=1, col=2)
 
         # edit axis labels
         fig['layout']['xaxis']['title'] = 'Feature 1'
@@ -140,50 +140,20 @@ def compare_gaussian_classifiers():
         fig['layout']['yaxis']['title'] = 'Feature 2'
         fig['layout']['yaxis2']['title'] = 'Feature 2'
 
+
         # add ellipse
-        for _class in gnb.classes_:
-            fig.add_trace(get_ellipse(gnb.mu_[_class], np.diag(gnb.vars_[_class])), row=2, col=1)
+        for _class in range(len(gnb.classes_)):
+            fig.add_trace(get_ellipse(gnb.mu_[_class], np.diag(gnb.vars_[_class])), row=1, col=2)
             # add center point
             fig.add_trace(go.Scatter(x=[gnb.mu_[_class][0]], y=[gnb.mu_[_class][1]], mode="markers",
-                                     marker=dict(symbol="x", size=10, color="black")), row=2, col=1)
+                                     marker=dict(symbol="x", size=10, color="black")), row=1, col=2)
 
+        fig.update_layout(showlegend=False)
         fig.show()
 
 
-def test():
-    X, y = load_dataset("../datasets/" + "gaussian1.npy")
-    likely_X = X[-50:]
-    likely_y = y[-50:]
-    X = X[:150]
-    y = y[:150]
-
-    # LDA SHIT
-    print("LDA shit")
-    lda = LDA()
-    lda.fit(X, y)
-    print(lda.predict(X))
-    print(lda.likelihood(likely_X))
-
-    # print lda attributes
-    print(lda.mu_)
-    print(lda.cov_)
-    print(lda.pi_)
-
-    # Gaussian Naive Bayes SHIT
-    print("GNB shit")
-    gnb = GaussianNaiveBayes()
-    gnb.fit(X, y)
-    print(gnb.predict(X))
-    print(gnb.likelihood(likely_X))
-
-    # print gnb attributes
-    print(gnb.mu_)
-    print(gnb.vars_)
-    print(gnb.pi_)
-
-
 def quiz():
-    S = np.array([[0, 0], [0, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 2], [7, 2]])
+    S = np.array([[0, 0], [1, 0], [2, 1], [3, 1], [4, 1], [5, 1], [6, 2], [7, 2]])
     X = S[:, 0]
     y = S[:, 1]
 
@@ -209,7 +179,6 @@ def quiz():
 
 if __name__ == '__main__':
     np.random.seed(0)
-    run_perceptron()
+    # run_perceptron()
     # compare_gaussian_classifiers()
-    # test()
     quiz()

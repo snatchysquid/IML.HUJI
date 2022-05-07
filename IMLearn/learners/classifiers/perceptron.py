@@ -92,6 +92,8 @@ class Perceptron(BaseEstimator):
         Fits model with or without an intercept depending on value of `self.fit_intercept_`
         """
         # choose whether to include intercept or not (add 1 to X)
+        self.fitted_ = True
+
         if self.include_intercept_:
             X = np.c_[np.ones(X.shape[0]), X]
 
