@@ -5,18 +5,10 @@ code\ examples/*.gif
 *.gif
 figures/*.png
 .idea
-<<<<<<< HEAD
 __pycache__
 lab/.ipynb_checkpoints/
 code\ examples/.ipynb_checkpoints/
 dontaddme.*
-||||||| bfc7971
-__pycache__
-lab/.ipynb_checkpoints/
-code\ examples/.ipynb_checkpoints/
-
-=======
 **__pycache__
 **.ipynb_checkpoints
 
->>>>>>> c87be5d7872d40b4409d315bf2d2360bc8a3d675

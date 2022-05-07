@@ -3,16 +3,10 @@ from typing import Tuple
 from utils import *
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-<<<<<<< HEAD
 import plotly.express as px
 from math import atan2, pi
 
 pio.templates.default = "simple_white"
-||||||| bfc7971
-pio.templates.default = "simple_white"
-=======
-from math import atan2, pi
->>>>>>> c87be5d7872d40b4409d315bf2d2360bc8a3d675
 
 
 def load_dataset(filename: str) -> Tuple[np.ndarray, np.ndarray]:
@@ -34,19 +28,12 @@ def load_dataset(filename: str) -> Tuple[np.ndarray, np.ndarray]:
         Class vector specifying for each sample its class
 
     """
-<<<<<<< HEAD
     dataset = np.load(filename)
 
     X = dataset[:, :2]
     y = dataset[:, 2]
 
     return X, y
-||||||| bfc7971
-    raise NotImplementedError()
-=======
-    data = np.load(filename)
-    return data[:, :2], data[:, 2].astype(int)
->>>>>>> c87be5d7872d40b4409d315bf2d2360bc8a3d675
 
 
 def run_perceptron():
@@ -74,7 +61,6 @@ def run_perceptron():
         perceptron = Perceptron(include_intercept=True, max_iter=max_iter, callback=perceptron_callback)
         perceptron.fit(X, y)
 
-<<<<<<< HEAD
         # Plot figure
         fig = px.line(x=np.arange(len(losses)), y=losses, title=f"Perceptron algorithm on a {n} dataset, with at most {max_iter} iterations") \
             .update_xaxes(title="Iteration") \
@@ -103,13 +89,6 @@ def get_ellipse(mu: np.ndarray, cov: np.ndarray):
     ys = (l1 * np.sin(theta) * np.cos(t)) + (l2 * np.cos(theta) * np.sin(t))
 
     return go.Scatter(x=mu[0] + xs, y=mu[1] + ys, mode="lines", marker_color="black")
-||||||| bfc7971
-        # Plot figure
-        raise NotImplementedError()
-=======
-        # Plot figure of loss as function of fitting iteration
-        raise NotImplementedError()
->>>>>>> c87be5d7872d40b4409d315bf2d2360bc8a3d675
 
 
 def get_ellipse(mu: np.ndarray, cov: np.ndarray):
@@ -221,15 +200,6 @@ def quiz():
     print((6+7) / 2)
     print(52)
     print(True)
-
-        # Add traces for data-points setting symbols and colors
-        raise NotImplementedError()
-
-        # Add `X` dots specifying fitted Gaussians' means
-        raise NotImplementedError()
-
-        # Add ellipses depicting the covariances of the fitted Gaussians
-        raise NotImplementedError()
 
 
 if __name__ == '__main__':
