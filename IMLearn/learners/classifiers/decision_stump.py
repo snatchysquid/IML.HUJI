@@ -39,7 +39,18 @@ class DecisionStump(BaseEstimator):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        raise NotImplementedError()
+        feature_err = np.empty((X.shape[1], 2), dtype=np.float64)
+        thresholds = np.empty((X.shape[1], 2), dtype=np.float64)
+
+        for j in range(X.shape[1]):
+            thresholds[j, 0], feature_err[j, 0] = self._find_threshold(X[:, j], y, 1)
+            thresholds[j, 1], feature_err[j, 1] = self._find_threshold(X[:, j], y, -1)
+
+        # get feature index and sign with lowest error
+        self.j_, self.sign_ = np.unravel_index(np.argmin(feature_err), feature_err.shape)
+        self.threshold_ = thresholds[self.j_, self.sign_]
+
+
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -95,7 +106,21 @@ class DecisionStump(BaseEstimator):
         For every tested threshold, values strictly below threshold are predicted as `-sign` whereas values
         which equal to or above the threshold are predicted as `sign`
         """
-        raise NotImplementedError()
+        # concat smallest value and largest value to values
+        thresholds = np.concatenate((np.min(values) - 1, np.unique(values), np.max(values) + 1))
+
+        thr_err = values.shape[0] + 1  # init to some large value
+
+        for threshold in thresholds:
+            pred = np.where(values >= threshold, sign, -sign)
+            err = np.mean(pred != labels)
+
+            if err < thr_err:  # guaranteed to happen at least once by the definition of thr_err
+                thr_err = err
+                thr = threshold
+
+        return thr, thr_err
+
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
