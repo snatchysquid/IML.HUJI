@@ -45,7 +45,7 @@ class DecisionStump(BaseEstimator):
 
         for j in range(X.shape[1]):
             thresholds[j, 0], feature_err[j, 0] = self._find_threshold(X[:, j], y, 1)
-            # thresholds[j, 1], feature_err[j, 1] = self._find_threshold(X[:, j], y, -1) # thresholds[j, 0], 1 - feature_err[j, 0]
+            thresholds[j, 1], feature_err[j, 1] = self._find_threshold(X[:, j], y, -1) # thresholds[j, 0], 1 - feature_err[j, 0]
 
         # get feature index and sign with lowest error
         self.j_, self.sign_ = np.unravel_index(np.argmin(feature_err), feature_err.shape)

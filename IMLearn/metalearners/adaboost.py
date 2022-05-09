@@ -67,7 +67,6 @@ class AdaBoost(BaseEstimator):
 
             # get weighted misclassification error
             err = np.sum(self.D_ * (total_prediction != y))
-            print(err)
             # update weights
             self.weights_[i] = np.log((1 - err) / err) / 2
 
