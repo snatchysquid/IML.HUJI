@@ -3,6 +3,7 @@ from typing import Tuple, NoReturn
 from ...base import BaseEstimator
 import numpy as np
 from itertools import product
+from ...metrics.loss_functions import misclassification_error
 
 
 class DecisionStump(BaseEstimator):
@@ -44,13 +45,16 @@ class DecisionStump(BaseEstimator):
 
         for j in range(X.shape[1]):
             thresholds[j, 0], feature_err[j, 0] = self._find_threshold(X[:, j], y, 1)
-            thresholds[j, 1], feature_err[j, 1] = self._find_threshold(X[:, j], y, -1)
+            # thresholds[j, 1], feature_err[j, 1] = self._find_threshold(X[:, j], y, -1) # thresholds[j, 0], 1 - feature_err[j, 0]
 
         # get feature index and sign with lowest error
         self.j_, self.sign_ = np.unravel_index(np.argmin(feature_err), feature_err.shape)
         self.threshold_ = thresholds[self.j_, self.sign_]
 
-
+        # note that now sign is either 0 or 1 and not -1 or 1
+        # this is because the sign is also used as the index here in thresholds and feature_err
+        # so we need to change the sign
+        self.sign_ = 1 if self.sign_ == 0 else -1
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -74,7 +78,14 @@ class DecisionStump(BaseEstimator):
         Feature values strictly below threshold are predicted as `-sign` whereas values which equal
         to or above the threshold are predicted as `sign`
         """
-        raise NotImplementedError()
+        j_feature = X[:, self.j_]
+
+        responses = np.ones(X.shape[0], dtype=np.int8)
+        responses[j_feature <= self.threshold_] = self.sign_
+        responses[j_feature > self.threshold_] = -self.sign_
+
+        return responses
+
 
     def _find_threshold(self, values: np.ndarray, labels: np.ndarray, sign: int) -> Tuple[float, float]:
         """
@@ -106,20 +117,34 @@ class DecisionStump(BaseEstimator):
         For every tested threshold, values strictly below threshold are predicted as `-sign` whereas values
         which equal to or above the threshold are predicted as `sign`
         """
-        # concat smallest value and largest value to values
-        thresholds = np.concatenate((np.min(values) - 1, np.unique(values), np.max(values) + 1))
+        # # sort values and labels by values
+        sorted_indices = np.argsort(values)
+        sorted_values, sorted_labels = values[sorted_indices], labels[sorted_indices]
 
-        thr_err = values.shape[0] + 1  # init to some large value
+        leftmost_threshold_correct = np.sum(sorted_labels == -sign)  # num of correct labels for leftmost threshold
+        rightmost_threshold_correct = np.sum(sorted_labels == sign)  # num of correct labels for rightmost threshold
 
-        for threshold in thresholds:
-            pred = np.where(values >= threshold, sign, -sign)
-            err = np.mean(pred != labels)
+        # we use cumulative sum because each time we go to the next threshold,
+        # only one value is effect - the next value in the cumsum
+        # if label*sign = 1 we are correct, which means we were wrong before so we add 1
+        # if label*sign = -1 we are wrong, which means we were correct before so we subtract 1
+        # this is exactly what cumsum does here
+        # the base for that is "leftmost_threshold_correct", so we add the cumsum to it.
+        threshold_corrects = leftmost_threshold_correct + np.cumsum(sorted_labels * sign)
 
-            if err < thr_err:  # guaranteed to happen at least once by the definition of thr_err
-                thr_err = err
-                thr = threshold
+        # get maximal gain
+        max_correct = np.argmax(threshold_corrects)
 
-        return thr, thr_err
+
+        # compare max_correct, leftmost_threshold_correct and rightmost_threshold_correct
+        if threshold_corrects[max_correct] < leftmost_threshold_correct and rightmost_threshold_correct < leftmost_threshold_correct:
+            # return very small number and the loss (1 - corrects_ratio)
+            return sorted_values[0] - 1, 1 - leftmost_threshold_correct / len(sorted_labels)
+        if threshold_corrects[max_correct] < rightmost_threshold_correct:
+            # return very large number and the loss (1 - corrects_ratio)
+            return sorted_values[-1] + 1, 1 - rightmost_threshold_correct / len(sorted_labels)
+
+        return sorted_values[max_correct], 1 - threshold_corrects[max_correct] / len(sorted_labels)
 
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
@@ -139,4 +164,4 @@ class DecisionStump(BaseEstimator):
         loss : float
             Performance under missclassification loss function
         """
-        raise NotImplementedError()
+        return misclassification_error(y, self._predict(X))
