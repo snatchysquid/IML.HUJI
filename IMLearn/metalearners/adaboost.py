@@ -56,13 +56,10 @@ class AdaBoost(BaseEstimator):
         for i in range(self.iterations_):
             self.models_[i] = self.wl_()
 
-            # randomly select a subset of the data according to the weights
-            indices = np.random.choice(X.shape[0], size=X.shape[0], replace=True, p=self.D_)
-            new_samples = X[indices]
-            new_labels = y[indices]
+            new_y = self.D_ * y
 
             # fit the model to the selected samples
-            self.models_[i].fit(new_samples, new_labels)
+            self.models_[i].fit(X, new_y)
             total_prediction = self.models_[i].predict(X)
 
             # get weighted misclassification error

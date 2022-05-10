@@ -45,7 +45,7 @@ class DecisionStump(BaseEstimator):
 
         for j in range(X.shape[1]):
             thresholds[j, 0], feature_err[j, 0] = self._find_threshold(X[:, j], y, 1)
-            thresholds[j, 1], feature_err[j, 1] = self._find_threshold(X[:, j], y, -1) # thresholds[j, 0], 1 - feature_err[j, 0]
+            thresholds[j, 1], feature_err[j, 1] = self._find_threshold(X[:, j], y, -1)  # thresholds[j, 0], 1 - feature_err[j, 0]
 
         # get feature index and sign with lowest error
         self.j_, self.sign_ = np.unravel_index(np.argmin(feature_err), feature_err.shape)
@@ -120,9 +120,10 @@ class DecisionStump(BaseEstimator):
         # # sort values and labels by values
         sorted_indices = np.argsort(values)
         sorted_values, sorted_labels = values[sorted_indices], labels[sorted_indices]
+        abs_labels = np.abs(sorted_labels)
 
-        leftmost_threshold_correct = np.sum(sorted_labels == -sign)  # num of correct labels for leftmost threshold
-        rightmost_threshold_correct = np.sum(sorted_labels == sign)  # num of correct labels for rightmost threshold
+        leftmost_threshold_correct = np.sum(abs_labels * np.sign(sorted_labels) == -sign)  # num of correct labels for leftmost threshold
+        rightmost_threshold_correct = np.sum(abs_labels * np.sign(sorted_labels) == sign)  # num of correct labels for rightmost threshold
 
         # we use cumulative sum because each time we go to the next threshold,
         # only one value is effect - the next value in the cumsum

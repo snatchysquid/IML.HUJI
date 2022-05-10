@@ -44,13 +44,19 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
     # Question 1: Train- and test errors of AdaBoost in noiseless case
     adaboost = AdaBoost(DecisionStump, n_learners)
     adaboost.fit(train_X, train_y)
-    losses = np.empty(n_learners)
+    losses = np.empty((n_learners, 2))
     for i in range(n_learners):
-        losses[i] = adaboost.partial_loss(test_X, test_y, i+1)
+        losses[i, 0] = adaboost.partial_loss(train_X, train_y, i+1)
+        losses[i, 1] = adaboost.partial_loss(test_X, test_y, i+1)
 
-    # plot the losses
-    fig = make_subplots(rows=1, cols=1, subplot_titles=["AdaBoost Loss"])
-    fig.add_trace(go.Scatter(x=np.arange(1, n_learners+1), y=losses), row=1, col=1)
+    fig = go.Figure().update_layout(
+        title="AdaBoost Train- and Test Errors"
+    )
+    fig.add_scatter(x=np.arange(1, n_learners+1), y=losses[:, 0], name='Train error')
+    fig.add_scatter(x=np.arange(1, n_learners+1), y=losses[:, 1], name='Test error')
+    fig.update_layout(xaxis_title='Number of learners', yaxis_title='Error')
+    # add both traces to legend
+
     fig.show()
 
 
