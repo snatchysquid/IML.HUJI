@@ -57,7 +57,7 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
     fig.add_scatter(x=np.arange(1, n_learners+1), y=losses[:, 1], name='Test error')
     fig.update_layout(xaxis_title='# of learners', yaxis_title='Error')
 
-    fig.show()
+    # fig.show()
 
 
     # Question 2: Plotting decision surfaces
@@ -86,7 +86,7 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
         .update_xaxes(visible=False).update_yaxes(visible=False)
 
 
-    fig.show()
+    # fig.show()
 
     # Question 3: Decision surface of best performing ensemble
     best_t = np.argmin(losses[:, 1]) + 1
@@ -105,7 +105,7 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
                                            line=dict(color="black", width=1)))
                     ])
 
-    fig.update_layout(title=rf"$\textbf{{Decision Boundaries Of The Best Ensemble - T = {best_t} }}$",
+    fig.update_layout(title=rf"$\textbf{{Decision Boundaries Of The Best Ensemble - T = {best_t}, with error - {1-losses[best_t-1, 1]} }}$",
                       margin=dict(t=100)) \
         .update_xaxes(visible=False).update_yaxes(visible=False)
 
@@ -132,7 +132,18 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
     fig.show()
 
 
+def test(noise=0, n_learners=250, train_size=5000, test_size=500):
+    (train_X, train_y), (test_X, test_y) = generate_data(train_size, 0), generate_data(test_size, noise)
+
+    # Question 1: Train- and test errors of AdaBoost in noiseless case
+    adaboost = AdaBoost(DecisionStump, n_learners)
+    adaboost.fit(train_X, train_y)
+
+    for i in range(n_learners):
+        print(adaboost.models_[i].__dict__)
+
+
 if __name__ == '__main__':
     np.random.seed(0)
     fit_and_evaluate_adaboost(noise=0)
-
+    # test()
