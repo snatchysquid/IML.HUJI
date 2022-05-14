@@ -57,7 +57,7 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
     fig.add_scatter(x=np.arange(1, n_learners+1), y=losses[:, 1], name='Test error')
     fig.update_layout(xaxis_title='# of learners', yaxis_title='Error')
 
-    # fig.show()
+    fig.show()
 
 
     # Question 2: Plotting decision surfaces
@@ -86,7 +86,7 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
         .update_xaxes(visible=False).update_yaxes(visible=False)
 
 
-    # fig.show()
+    fig.show()
 
     # Question 3: Decision surface of best performing ensemble
     best_t = np.argmin(losses[:, 1]) + 1

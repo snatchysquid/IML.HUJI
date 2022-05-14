@@ -45,7 +45,7 @@ class DecisionStump(BaseEstimator):
 
         for j in range(X.shape[1]):
             thresholds[j, 0], feature_err[j, 0] = self._find_threshold(X[:, j], y, 1)
-            thresholds[j, 1], feature_err[j, 1] = self._find_threshold(X[:, j], y, -1)  # thresholds[j, 0], 1 - feature_err[j, 0]
+            thresholds[j, 1], feature_err[j, 1] = self._find_threshold(X[:, j], y, -1)
 
         # get feature index and sign with lowest error
         self.j_, self.sign_ = np.unravel_index(np.argmin(feature_err), feature_err.shape)
@@ -81,8 +81,8 @@ class DecisionStump(BaseEstimator):
         j_feature = X[:, self.j_]
 
         responses = np.ones(X.shape[0], dtype=np.int8)
-        responses[j_feature <= self.threshold_] = self.sign_
-        responses[j_feature > self.threshold_] = -self.sign_
+        responses[j_feature >= self.threshold_] = self.sign_
+        responses[j_feature < self.threshold_] = -self.sign_
 
         return responses
 
@@ -122,7 +122,7 @@ class DecisionStump(BaseEstimator):
         sorted_values, sorted_labels = values[sorted_indices], labels[sorted_indices]
         abs_labels = np.abs(sorted_labels)
 
-        leftmost_threshold_correct = np.sum(abs_labels * (np.sign(sorted_labels) == sign))  # num of correct labels for leftmost threshold
+        leftmost_threshold_correct = np.sum(abs_labels * (np.sign(sorted_labels) == -sign))  # num of correct labels for leftmost threshold
 
         # we use cumulative sum because each time we go to the next threshold,
         # only one value is effect - the next value in the cumsum
@@ -130,7 +130,7 @@ class DecisionStump(BaseEstimator):
         # if label*sign = -1 we are wrong, which means we were correct before so we subtract 1
         # this is exactly what cumsum does here
         # the base for that is "leftmost_threshold_correct", so we add the cumsum to it.
-        threshold_corrects = leftmost_threshold_correct - np.cumsum(sorted_labels * sign)
+        threshold_corrects = leftmost_threshold_correct - np.cumsum(sorted_labels * -sign)
 
         # get maximal gain
         max_correct = np.argmin(threshold_corrects)
@@ -139,11 +139,11 @@ class DecisionStump(BaseEstimator):
         if threshold_corrects[max_correct] >= leftmost_threshold_correct:
             # return very small number and the loss (1 - corrects_ratio)
             return np.NINF, leftmost_threshold_correct / len(sorted_labels)
-        elif max_correct == threshold_corrects.shape[0] or sorted_values[max_correct] == sorted_values[-1]:  # if max_correct is the last index (rightmost border), return inf
+        elif max_correct + 1 == threshold_corrects.shape[0]:  # if max_correct is the last index (rightmost border), return inf
             # return very large number and the loss (1 - corrects_ratio)
-            return np.inf, sorted_values[max_correct] / len(sorted_labels)
+            return np.inf, threshold_corrects[max_correct] / len(sorted_labels)
 
-        return sorted_values[max_correct], threshold_corrects[max_correct] / len(sorted_labels)
+        return sorted_values[max_correct+1], threshold_corrects[max_correct] / len(sorted_labels)
 
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
