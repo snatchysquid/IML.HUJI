@@ -120,30 +120,30 @@ class DecisionStump(BaseEstimator):
         # # sort values and labels by values
         sorted_indices = np.argsort(values)
         sorted_values, sorted_labels = values[sorted_indices], labels[sorted_indices]
-        abs_labels = np.abs(sorted_labels)
+        abs_labels = np.abs(sorted_labels)  # labels might be weighted so its not simply 1 or -1
 
-        leftmost_threshold_correct = np.sum(abs_labels * (np.sign(sorted_labels) == -sign))  # num of correct labels for leftmost threshold
+        leftmost_threshold_error = np.sum(abs_labels * (np.sign(sorted_labels) == -sign))  # num of incorrect labels for leftmost threshold (-inf)
 
         # we use cumulative sum because each time we go to the next threshold,
         # only one value is effect - the next value in the cumsum
         # if label*sign = 1 we are correct, which means we were wrong before so we add 1
         # if label*sign = -1 we are wrong, which means we were correct before so we subtract 1
         # this is exactly what cumsum does here
-        # the base for that is "leftmost_threshold_correct", so we add the cumsum to it.
-        threshold_corrects = leftmost_threshold_correct - np.cumsum(sorted_labels * -sign)
+        # the base for that is "leftmost_threshold_error", so we add the cumsum to it.
+        threshold_errors = leftmost_threshold_error - np.cumsum(sorted_labels * -sign)
 
-        # get maximal gain
-        max_correct = np.argmin(threshold_corrects)
+        # get minimal loss
+        min_error = np.argmin(threshold_errors)
 
-        # compare max_correct and leftmost_threshold_correct
-        if threshold_corrects[max_correct] >= leftmost_threshold_correct:
-            # return very small number and the loss (1 - corrects_ratio)
-            return np.NINF, leftmost_threshold_correct / len(sorted_labels)
-        elif max_correct + 1 == threshold_corrects.shape[0]:  # if max_correct is the last index (rightmost border), return inf
-            # return very large number and the loss (1 - corrects_ratio)
-            return np.inf, threshold_corrects[max_correct] / len(sorted_labels)
+        # compare min_error and leftmost_threshold_error
+        if threshold_errors[min_error] >= leftmost_threshold_error:
+            # return very small number
+            return np.NINF, leftmost_threshold_error / len(sorted_labels)
+        elif min_error + 1 == threshold_errors.shape[0]:  # if min_error is the last index (rightmost border), return inf
+            # return very large number and the loss
+            return np.inf, threshold_errors[min_error] / len(sorted_labels)
 
-        return sorted_values[max_correct+1], threshold_corrects[max_correct] / len(sorted_labels)
+        return sorted_values[min_error+1], threshold_errors[min_error] / len(sorted_labels)
 
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
