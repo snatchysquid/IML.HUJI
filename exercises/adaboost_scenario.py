@@ -134,19 +134,8 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
     fig.show()
 
 
-def test(noise=0, n_learners=250, train_size=5000, test_size=500):
-    (train_X, train_y), (test_X, test_y) = generate_data(train_size, 0), generate_data(test_size, noise)
-
-    # Question 1: Train- and test errors of AdaBoost in noiseless case
-    adaboost = AdaBoost(DecisionStump, n_learners)
-    adaboost.fit(train_X, train_y)
-
-    for i in range(n_learners):
-        print(adaboost.models_[i].__dict__)
-
-
 if __name__ == '__main__':
     np.random.seed(0)
-    # fit_and_evaluate_adaboost(noise=0)
+    fit_and_evaluate_adaboost(noise=0)
     fit_and_evaluate_adaboost(noise=0.4)
-    # test()
+
