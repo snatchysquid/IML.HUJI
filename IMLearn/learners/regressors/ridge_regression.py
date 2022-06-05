@@ -43,6 +43,9 @@ class RidgeRegression(BaseEstimator):
         self.include_intercept_ = include_intercept
         self.lam_ = lam
 
+        self.X_means_ = None
+        self.y_mean_ = None
+
     def _fit(self, X: np.ndarray, y: np.ndarray) -> NoReturn:
         """
         Fit Ridge regression model to given samples
@@ -59,7 +62,19 @@ class RidgeRegression(BaseEstimator):
         -----
         Fits model with or without an intercept depending on value of `self.include_intercept_`
         """
-        raise NotImplementedError()
+        self.X_means_ = np.mean(X, axis=0)
+        self.y_mean_ = np.mean(y)
+
+        # changing X,y (using -=) will result in change of all references of X,y, so we copy it
+        X = X.copy()
+        y = y.copy()
+
+        if self.include_intercept_:
+            X -= self.X_means_
+            y -= self.y_mean_
+
+        self.coefs_ = np.linalg.inv(X.T @ X + self.lam_ * np.eye(X.shape[1])) @ X.T @ y
+
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -75,7 +90,13 @@ class RidgeRegression(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        raise NotImplementedError()
+        # changing X,y (using -=) will result in change of all references of X,y, so we copy it
+        X = X.copy()
+
+        if self.include_intercept_:
+            X -= self.X_means_
+
+        return X @ self.coefs_ + self.y_mean_
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
@@ -94,4 +115,4 @@ class RidgeRegression(BaseEstimator):
         loss : float
             Performance under MSE loss function
         """
-        raise NotImplementedError()
+        return np.mean((self._predict(X) - y) ** 2)
