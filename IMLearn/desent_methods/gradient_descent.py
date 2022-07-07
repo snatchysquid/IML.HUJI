@@ -75,6 +75,7 @@ class GradientDescent:
         self.tol_ = tol
         self.max_iter_ = max_iter
         self.callback_ = callback
+        self.update_rule_ = None
 
     def fit(self, f: BaseModule, X: np.ndarray, y: np.ndarray):
         """
@@ -119,4 +120,71 @@ class GradientDescent:
                 Euclidean norm of w^(t)-w^(t-1)
 
         """
-        raise NotImplementedError()
+        # choose selection method
+        final = lambda old, new: new
+        average = lambda old, new: old + new  # we will divide by number of iterations at the end
+
+        def best(old, new):
+            original_weights = f.weights
+
+            f.weights = new
+            new_val = f.compute_output(X=X, y=y)
+
+            f.weights = old
+            old_val = f.compute_output(X=X, y=y)
+
+            f.weights = original_weights
+            return new if new_val < old_val else old
+
+
+        out_functions_ = {
+            "last": final,
+            "best": best,
+            "average": average
+        }
+        self.update_rule_ = out_functions_[self.out_type_]
+
+        # Initialize values
+        weights = f.weights
+        prev_weights = None
+
+        if weights is None:
+            # sample from normal distribution with mean 0 and std 1
+            weights = np.random.normal(0, 1, size=X.shape[1]) / np.sqrt(X.shape[1])
+
+        final_weights = weights
+        iter = 1
+
+        while iter < self.max_iter_ and (iter == 1 or np.linalg.norm(weights - prev_weights) > self.tol_):
+            #save previous
+            prev_weights = weights
+
+            # Get learning rate
+            eta = self.learning_rate_.lr_step(t=iter)
+
+            # set weight of f
+            f.weights = weights
+
+            # Compute objective function value
+            val = f.compute_output(X=X, y=y)
+
+            # Compute jacobian
+            grad = f.compute_jacobian(X=X, y=y)
+
+            # Update weights
+            weights = weights - eta * grad
+
+            # Callback function
+            self.callback_(solver=self, weight=weights, val=val, grad=grad, t=iter, eta=eta, delta=np.linalg.norm(weights - final_weights))
+
+            # Update final weights
+            final_weights = self.update_rule_(final_weights, weights)
+
+            # Update iteration
+            iter += 1
+
+        if self.out_type_ == "average":
+            final_weights /= iter
+
+        return final_weights
+
