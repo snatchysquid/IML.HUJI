@@ -92,6 +92,7 @@ def animate_decision_boundary(nn: NeuralNetwork, weights: List[np.ndarray], lims
         animation_to_gif(fig, save_name, 200, width=400, height=400)
 
 
+
 if __name__ == '__main__':
     np.random.seed(0)
 
@@ -105,19 +106,45 @@ if __name__ == '__main__':
                                marker=dict(color=train_y, colorscale=custom, line=dict(color="black", width=1)))],
               layout=go.Layout(title=r"$\text{Train Data}$", xaxis=dict(title=r"$x_1$"), yaxis=dict(title=r"$x_2$"),
                                width=400, height=400))\
-        .write_image(f"../figures/nonlinear_data.png")
+        .write_image(f"./figures/nonlinear_data.png")
 
     # ---------------------------------------------------------------------------------------------#
     # Question 1: Fitting simple network with two hidden layers                                    #
     # ---------------------------------------------------------------------------------------------#
-    raise NotImplementedError()
+    nn_1 = NeuralNetwork(
+        modules=[FullyConnectedLayer(input_dim=n_features, output_dim=7, activation=ReLU(), include_intercept=False),
+                 FullyConnectedLayer(input_dim=7, output_dim=13, activation=ReLU(),
+                                     include_intercept=False),
+                 FullyConnectedLayer(input_dim=13, output_dim=3, activation=ReLU(), include_intercept=False)],
+        loss_fn=CrossEntropyLoss(),
+        solver=GradientDescent(max_iter=5000, learning_rate=FixedLR(5e-3)))
 
     # ---------------------------------------------------------------------------------------------#
     # Question 2: Fitting a network with no hidden layers                                          #
     # ---------------------------------------------------------------------------------------------#
-    raise NotImplementedError()
+    nn_2 = NeuralNetwork(
+        modules=[FullyConnectedLayer(input_dim=n_features, output_dim=3, activation=ReLU(), include_intercept=False)],
+        loss_fn=CrossEntropyLoss(),
+        solver=GradientDescent())
 
     # ---------------------------------------------------------------------------------------------#
     # Question 3+4: Plotting network convergence process                                           #
     # ---------------------------------------------------------------------------------------------#
-    raise NotImplementedError()
+    # import warnings
+    # warnings.filterwarnings('error')
+
+    # increase precision
+    train_X = train_X
+
+    nn_1.fit(train_X, train_y)
+    # nn_2.fit(train_X, train_y)
+
+    print("post fit")
+
+    fig = plot_decision_boundary(nn_1, lims, train_X, train_y, title="Simple Network")
+    fig.write_image(f"./figures/simple_network.png")
+    fig.show()
+
+    # fig = plot_decision_boundary(nn_2, lims, train_X, train_y, title="Simple Network")
+    # fig.write_image(f"./figures/simple_network_no_hidden.png")
+    # fig.show()

@@ -28,7 +28,13 @@ class NeuralNetwork(BaseEstimator, BaseModule):
                  loss_fn: BaseModule,
                  solver: Union[StochasticGradientDescent, GradientDescent]):
         super().__init__()
-        raise NotImplementedError()
+
+        self.modules_ = modules
+        self.loss_fn_ = loss_fn
+        self.solver_ = solver
+
+        self.pre_activations_ = None
+        self.post_activations_ = None
 
     # region BaseEstimator implementations
     def _fit(self, X: np.ndarray, y: np.ndarray) -> NoReturn:
@@ -43,7 +49,8 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        raise NotImplementedError()
+        # fit network
+        self.solver_.fit(f=self, X=X, y=y)
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -59,7 +66,7 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         responses : ndarray of shape (n_samples, )
             Predicted labels of given samples
         """
-        raise NotImplementedError()
+        return np.argmax(self.compute_prediction(X=X), axis=1)
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
@@ -78,7 +85,7 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         loss : float
             Performance under specified loss function
         """
-        raise NotImplementedError()
+        return self.loss_fn_.compute_output(X=self.predict(X=X), y=y)
     # endregion
 
     # region BaseModule implementations
@@ -103,7 +110,10 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         -----
         Function stores all intermediate values in the `self.pre_activations_` and `self.post_activations_` arrays
         """
-        raise NotImplementedError()
+        # compute network output
+        X = self.compute_prediction(X)
+
+        return self.loss_fn_.compute_output(X=X, y=y)
 
     def compute_prediction(self, X: np.ndarray):
         """
@@ -120,7 +130,19 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         output : ndarray of shape (n_samples, n_classes)
             Network's output values prior to the call of the loss function
         """
-        raise NotImplementedError()
+        # pass X through network
+        self.pre_activations_ = []
+        self.post_activations_ = [X]  # todo: is X here or in pre_activations_?
+
+        for module in self.modules_:
+            if module.include_intercept_:
+                self.pre_activations_.append(np.concatenate((np.ones((X.shape[0], 1)), X), axis=1) @ module.weights)
+            else:
+                self.pre_activations_.append(X @ module.weights)
+            X = module.compute_output(X=X)
+            self.post_activations_.append(X)
+
+        return X
 
     def compute_jacobian(self, X: np.ndarray, y: np.ndarray, **kwargs) -> np.ndarray:
         """
@@ -143,7 +165,40 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         Function depends on values calculated in forward pass and stored in
         `self.pre_activations_` and `self.post_activations_`
         """
-        raise NotImplementedError()
+        self.compute_output(X=X, y=y, **kwargs)  # set up pre_activations_ and post_activations_
+
+        # compute jacobian
+        partials = []
+        delta_T = self.loss_fn_.compute_jacobian(X=self.post_activations_[-1], y=y)
+        delta_T = np.einsum('klj,kl->kj', self.modules_[-1].activation_.compute_jacobian(X=self.pre_activations_[-1]), delta_T)
+
+        for i, module in enumerate(reversed(self.modules_), start=1):
+            final_partial = np.einsum('ki,kj->kij', delta_T, self.post_activations_[-i-1])
+
+            # concat delta_T with final_partial if bias is included
+            if module.include_intercept_:
+                final_partial = np.dstack((delta_T, final_partial))
+
+            partials.append(final_partial)
+
+            if i < len(self.modules_):
+                activation_derivative = self.modules_[-i-1].activation_.compute_jacobian(X=self.pre_activations_[-i-1])
+
+                if module.include_intercept_:
+                    weights_times_delta = np.einsum('il,kl->ki', module.weights[1:, :], delta_T)
+                    delta_T = np.einsum('kil,kl->ki', activation_derivative, weights_times_delta)
+                else:
+                    weights_times_delta = np.einsum('il,kl->ki', module.weights, delta_T)
+                    delta_T = np.einsum('kil,kl->ki', activation_derivative, weights_times_delta)
+
+
+        # reverse partials to get correct order
+        partials = partials[::-1]
+
+        for i in range(len(partials)):
+            partials[i] = np.sum(partials[i], axis=0).T
+
+        return self._flatten_parameters(partials)
 
     @property
     def weights(self) -> np.ndarray:

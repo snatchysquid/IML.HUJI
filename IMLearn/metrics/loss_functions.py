@@ -56,6 +56,7 @@ def accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """
     return np.mean(y_pred == y_true)
 
+
 def cross_entropy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """
     Calculate the cross entropy of given predictions
@@ -71,7 +72,14 @@ def cross_entropy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     -------
     Cross entropy of given predictions
     """
-    raise NotImplementedError()
+    epsilon = 0.00001
+    y_pred = np.clip(y_pred, epsilon, 1. - epsilon)
+    b = np.zeros_like(y_pred)
+    b[np.arange(len(y_pred)), y_true] = 1
+    return -np.sum(b * np.log(y_pred), axis=1)
+
+
+from scipy.special import softmax as maxsoftmax
 
 
 def softmax(X: np.ndarray) -> np.ndarray:
@@ -87,4 +95,5 @@ def softmax(X: np.ndarray) -> np.ndarray:
     output: ndarray of shape (n_samples, n_features)
         Softmax(x) for every sample x in given data X
     """
-    raise NotImplementedError()
+    # return np.exp(X) / np.sum(np.exp(X), axis=1, keepdims=True)
+    return maxsoftmax(X, axis=1)

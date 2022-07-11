@@ -168,8 +168,10 @@ class GradientDescent:
             # Compute objective function value
             val = f.compute_output(X=X, y=y)
 
+
             # Compute jacobian
             grad = f.compute_jacobian(X=X, y=y)
+            # print(grad)
 
             # Update weights
             weights = weights - eta * grad
