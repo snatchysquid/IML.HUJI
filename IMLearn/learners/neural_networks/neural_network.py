@@ -170,14 +170,13 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         # compute jacobian
         partials = []
         delta_T = self.loss_fn_.compute_jacobian(X=self.post_activations_[-1], y=y)
-        delta_T = np.einsum('klj,kl->kj', self.modules_[-1].activation_.compute_jacobian(X=self.pre_activations_[-1]), delta_T)
+        delta_T = np.einsum('kjl,kl->kj', self.modules_[-1].activation_.compute_jacobian(X=self.pre_activations_[-1]), delta_T)
 
         for i, module in enumerate(reversed(self.modules_), start=1):
-            final_partial = np.einsum('ki,kj->kij', delta_T, self.post_activations_[-i-1])
-
-            # concat delta_T with final_partial if bias is included
             if module.include_intercept_:
-                final_partial = np.dstack((delta_T, final_partial))
+                final_partial = np.einsum('ki,kj->kij', delta_T, np.concatenate((np.ones((self.post_activations_[-i-1].shape[0], 1)), self.post_activations_[-i - 1]), axis=1))
+            else:
+                final_partial = np.einsum('ki,kj->kij', delta_T, self.post_activations_[-i - 1])
 
             partials.append(final_partial)
 
@@ -191,12 +190,11 @@ class NeuralNetwork(BaseEstimator, BaseModule):
                     weights_times_delta = np.einsum('il,kl->ki', module.weights, delta_T)
                     delta_T = np.einsum('kil,kl->ki', activation_derivative, weights_times_delta)
 
-
         # reverse partials to get correct order
         partials = partials[::-1]
 
         for i in range(len(partials)):
-            partials[i] = np.sum(partials[i], axis=0).T
+            partials[i] = np.mean(partials[i], axis=0).T
 
         return self._flatten_parameters(partials)
 

@@ -57,9 +57,9 @@ class FullyConnectedLayer(BaseModule):
         # Initialize random weights
         if self.include_intercept_:
             # TODO: should sigma^2 be 1/input_dim or 1/(input_dim + 1)?
-            self.weights = np.random.normal(0, 12 / (input_dim+1), (input_dim+1, output_dim))
+            self.weights = np.random.normal(0, 1 / (input_dim+1), (input_dim+1, output_dim))
         else:
-            self.weights = np.random.normal(0, 12 / input_dim, (input_dim, output_dim))
+            self.weights = np.random.normal(0, 1 / input_dim, (input_dim, output_dim))
 
 
     def compute_output(self, X: np.ndarray, **kwargs) -> np.ndarray:
