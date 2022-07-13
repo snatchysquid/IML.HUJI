@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
-from typing import Tuple, List
+from typing import Tuple, List, Callable
 from IMLearn.metrics.loss_functions import accuracy
-from IMLearn.learners.neural_networks.modules import FullyConnectedLayer, ReLU, CrossEntropyLoss
+from IMLearn.learners.neural_networks.modules import FullyConnectedLayer, ReLU, CrossEntropyLoss, Identity
 from IMLearn.learners.neural_networks.neural_network import NeuralNetwork
 from IMLearn.desent_methods import GradientDescent, FixedLR
 from IMLearn.utils.utils import split_train_test
@@ -92,6 +92,34 @@ def animate_decision_boundary(nn: NeuralNetwork, weights: List[np.ndarray], lims
         animation_to_gif(fig, save_name, 200, width=400, height=400)
 
 
+def get_gd_state_recorder_callback() -> Tuple[Callable[[], None], List[np.ndarray], List[np.ndarray]]:
+    """
+    Callback generator for the GradientDescent class, recording the objective's value and parameters at each iteration
+
+    Return:
+    -------
+    callback: Callable[[], None]
+        Callback function to be passed to the GradientDescent class, recoding the objective's value and parameters
+        at each iteration of the algorithm
+
+    values: List[np.ndarray]
+        Recorded objective values
+
+    weights: List[np.ndarray]
+        Recorded parameters
+    """
+    values = []
+    grads = []
+    weights = []
+
+    def callback(solver, weight, val, grad, t, eta, delta):
+        values.append(val)
+        grads.append(grad)
+        weights.append(weight)
+
+    return callback, values, grads, weights
+
+
 
 if __name__ == '__main__':
     np.random.seed(0)
@@ -111,39 +139,80 @@ if __name__ == '__main__':
     # ---------------------------------------------------------------------------------------------#
     # Question 1: Fitting simple network with two hidden layers                                    #
     # ---------------------------------------------------------------------------------------------#
+    callback, values, grads, weights = get_gd_state_recorder_callback()
+
     nn_1 = NeuralNetwork(
-        modules=[FullyConnectedLayer(input_dim=n_features, output_dim=10, activation=ReLU(), include_intercept=True),
-                 FullyConnectedLayer(input_dim=10, output_dim=10, activation=ReLU(),
-                                     include_intercept=True),
-                 FullyConnectedLayer(input_dim=10, output_dim=3, activation=ReLU(), include_intercept=True)],
+        modules=[FullyConnectedLayer(input_dim=n_features, output_dim=16, activation=ReLU(), include_intercept=True),
+                 FullyConnectedLayer(input_dim=16, output_dim=16, activation=ReLU(), include_intercept=True),
+                 FullyConnectedLayer(input_dim=16, output_dim=n_classes, activation=Identity(), include_intercept=True)],
         loss_fn=CrossEntropyLoss(),
-        solver=GradientDescent(max_iter=5000, learning_rate=FixedLR(1e-1)))
-
-    # ---------------------------------------------------------------------------------------------#
-    # Question 2: Fitting a network with no hidden layers                                          #
-    # ---------------------------------------------------------------------------------------------#
-    nn_2 = NeuralNetwork(
-        modules=[FullyConnectedLayer(input_dim=n_features, output_dim=3, activation=ReLU(), include_intercept=False)],
-        loss_fn=CrossEntropyLoss(),
-        solver=GradientDescent())
-
-    # ---------------------------------------------------------------------------------------------#
-    # Question 3+4: Plotting network convergence process                                           #
-    # ---------------------------------------------------------------------------------------------#
-    # import warnings
-    # warnings.filterwarnings('error')
-
-    # increase precision
-    train_X = train_X
+        solver=GradientDescent(max_iter=5000, learning_rate=FixedLR(1e-1), callback=callback))
 
     nn_1.fit(train_X, train_y)
-    # nn_2.fit(train_X, train_y)
+    print(accuracy(test_y, nn_1.predict(test_X)))
 
 
     fig = plot_decision_boundary(nn_1, lims, train_X, train_y, title="Simple Network")
     fig.write_image(f"./figures/simple_network.png")
     fig.show()
 
-    # fig = plot_decision_boundary(nn_2, lims, train_X, train_y, title="Simple Network")
-    # fig.write_image(f"./figures/simple_network_no_hidden.png")
-    # fig.show()
+    # take each 100th iteration of the gradient descent and plot the decision boundary
+    animate_decision_boundary(nn_1, weights[::100], lims, train_X, train_y, title="Simple Network",
+                                save_name="./figures/simple_network_animation.gif")
+
+    # plot convergence of the objective function
+    fig = go.Figure(data=[go.Scatter(x=list(range(len(values))), y=[np.sum(value) for value in values])],
+                    layout=go.Layout(title=r"$\text{Objective Function Convergence}$",
+                                        xaxis=dict(title=r"$\text{Iteration}$"), yaxis=dict(title=r"$\text{Objective}$")))
+    # add norm of weights
+    fig.add_trace(go.Scatter(x=list(range(len(grads))), y=[np.linalg.norm(grad) for grad in grads]))
+    fig.show()
+
+    # ---------------------------------------------------------------------------------------------#
+    # Question 2: Fitting a network with no hidden layers                                          #
+    # ---------------------------------------------------------------------------------------------#
+    nn_2 = NeuralNetwork(
+        modules=[FullyConnectedLayer(input_dim=n_features, output_dim=n_classes, activation=ReLU(), include_intercept=False)],
+        loss_fn=CrossEntropyLoss(),
+        solver=GradientDescent(max_iter=5000, learning_rate=FixedLR(1e-1)))
+
+    nn_2.fit(train_X, train_y)
+
+    fig = plot_decision_boundary(nn_2, lims, train_X, train_y, title="Simple Network")
+    fig.write_image(f"./figures/simple_network_no_hidden.png")
+    fig.show()
+
+    # ---------------------------------------------------------------------------------------------#
+    # Question 3+4: Plotting network convergence process                                           #
+    # ---------------------------------------------------------------------------------------------#
+    callback, values, grads, weights = get_gd_state_recorder_callback()
+
+    nn_1 = NeuralNetwork(
+        modules=[FullyConnectedLayer(input_dim=n_features, output_dim=6, activation=ReLU(), include_intercept=True),
+                 FullyConnectedLayer(input_dim=6, output_dim=6, activation=ReLU(), include_intercept=True),
+                 FullyConnectedLayer(input_dim=6, output_dim=n_classes, activation=Identity(), include_intercept=True)],
+        loss_fn=CrossEntropyLoss(),
+        solver=GradientDescent(max_iter=5000, learning_rate=FixedLR(1e-1), callback=callback))
+
+    nn_1.fit(train_X, train_y)
+    print(accuracy(test_y, nn_1.predict(test_X)))
+
+
+    fig = plot_decision_boundary(nn_1, lims, train_X, train_y, title="Simple Network")
+    fig.write_image(f"./figures/simple_network.png")
+    fig.show()
+
+    # take each 100th iteration of the gradient descent and plot the decision boundary
+    animate_decision_boundary(nn_1, weights[::100], lims, train_X, train_y, title="Simple Network",
+                                save_name="./figures/simple_network_animation.gif")
+
+    # plot convergence of the objective function
+    fig = go.Figure(data=[go.Scatter(x=list(range(len(values))), y=[np.sum(value) for value in values])],
+                    layout=go.Layout(title=r"$\text{Objective Function Convergence}$",
+                                        xaxis=dict(title=r"$\text{Iteration}$"), yaxis=dict(title=r"$\text{Objective}$")))
+    # add norm of weights
+    fig.add_trace(go.Scatter(x=list(range(len(grads))), y=[np.linalg.norm(grad) for grad in grads]))
+    fig.show()
+
+
+

@@ -144,6 +144,49 @@ class ReLU(BaseModule):
         return np.einsum('ij,kj->ikj', derivative, np.eye(derivative.shape[1], dtype=derivative.dtype))
 
 
+class Identity(BaseModule):
+    """
+    Module of a identity activation function computing the element-wise function identity(x)=x
+    this is equivalent for using no activation, but I'm lazy and don't want to treat this edge case
+    so I created this module
+    """
+
+    def compute_output(self, X: np.ndarray, **kwargs) -> np.ndarray:
+        """
+        Compute element-wise value of activation
+
+        Parameters:
+        -----------
+        X: ndarray of shape (n_samples, input_dim)
+            Input data to be passed through activation
+
+        Returns:
+        --------
+        output: ndarray of shape (n_samples, input_dim)
+            Data after performing the ReLU activation function
+        """
+        return X
+
+    def compute_jacobian(self, X: np.ndarray, **kwargs) -> np.ndarray:
+        """
+        Compute module derivative with respect to given data
+
+        Parameters:
+        -----------
+        X: ndarray of shape (n_samples, input_dim)
+            Input data to compute derivative with respect to
+
+        Returns:
+        -------
+        output: ndarray of shape (n_samples,)
+            Element-wise derivative of ReLU with respect to given data
+        """
+        derivative = np.ones(X.shape)
+
+        # turn derivative to diagonal matrix for each sample
+        return np.einsum('ij,kj->ikj', derivative, np.eye(derivative.shape[1], dtype=derivative.dtype))
+
+
 class CrossEntropyLoss(BaseModule):
     """
     Module of Cross-Entropy Loss: The Cross-Entropy between the Softmax of a sample x and e_k for a true class k

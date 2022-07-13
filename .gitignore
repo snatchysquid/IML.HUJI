@@ -11,4 +11,5 @@ code\ examples/.ipynb_checkpoints/
 dontaddme.*
 **__pycache__
 **.ipynb_checkpoints
+./misc_and_tests
 

@@ -85,7 +85,7 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         loss : float
             Performance under specified loss function
         """
-        return self.loss_fn_.compute_output(X=self.predict(X=X), y=y)
+        return self.loss_fn_.compute_output(X=self.compute_prediction(X=X), y=y)
     # endregion
 
     # region BaseModule implementations

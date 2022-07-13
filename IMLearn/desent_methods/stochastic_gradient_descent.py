@@ -126,7 +126,7 @@ class StochasticGradientDescent:
             self.callback_(solver=self, weights=f.weights, val=val, grad=jac, t=self.t_, eta=eta, delta=np.linalg.norm(f.weights - prev_weights), batch_indices=batch_indices)
             self.t_ += 1
 
-        return f.weights_
+        return f.weights
 
     def _partial_fit(self, f: BaseModule, X: np.ndarray, y: np.ndarray, t: int) -> Tuple[np.ndarray, np.ndarray, float]:
         """
@@ -161,11 +161,7 @@ class StochasticGradientDescent:
         jac = f.compute_jacobian(X=X, y=y)
 
         eta = self.learning_rate_.lr_step(t=t)
-        f.weights_ -= eta * jac
-
-        # TODO: do we return new or old val, jac?
-        val = f.compute_output(X=X, y=y)  ####
-        jac = f.compute_jacobian(X=X, y=y)  ####
+        f.weights -= eta * jac
 
         return val, jac, eta
 

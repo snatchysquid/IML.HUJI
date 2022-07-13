@@ -1,10 +1,11 @@
 import time
 import numpy as np
 import gzip
-from typing import Tuple
+from typing import Tuple, List, Callable
 
 from IMLearn.metrics.loss_functions import accuracy
-from IMLearn.learners.neural_networks.modules import FullyConnectedLayer, ReLU, CrossEntropyLoss, softmax
+from IMLearn.learners.neural_networks.modules import FullyConnectedLayer, ReLU, CrossEntropyLoss, softmax, \
+    Identity
 from IMLearn.learners.neural_networks.neural_network import NeuralNetwork
 from IMLearn.desent_methods import GradientDescent, StochasticGradientDescent, FixedLR
 from IMLearn.utils.utils import confusion_matrix
@@ -14,6 +15,7 @@ from plotly.subplots import make_subplots
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
+
 pio.templates.default = "simple_white"
 
 
@@ -74,13 +76,42 @@ def plot_images_grid(images: np.ndarray, title: str = ""):
     subset_images = images.reshape(-1, 28, 28)
 
     height, width = subset_images.shape[1:]
-    grid = subset_images.reshape(side, side, height, width).swapaxes(1, 2).reshape(height * side, width * side)
+    grid = subset_images.reshape(side, side, height, width).swapaxes(1, 2).reshape(height * side,
+                                                                                   width * side)
 
-    return px.imshow(grid, color_continuous_scale="gray")\
+    return px.imshow(grid, color_continuous_scale="gray") \
         .update_layout(title=dict(text=title, y=0.97, x=0.5, xanchor="center", yanchor="top"),
-                       font=dict(size=16), coloraxis_showscale=False)\
-        .update_xaxes(showticklabels=False)\
+                       font=dict(size=16), coloraxis_showscale=False) \
+        .update_xaxes(showticklabels=False) \
         .update_yaxes(showticklabels=False)
+
+
+def get_gd_state_recorder_callback() -> Tuple[Callable[[], None], List[np.ndarray], List[np.ndarray]]:
+    """
+    Callback generator for the GradientDescent class, recording the objective's value and parameters at each iteration
+
+    Return:
+    -------
+    callback: Callable[[], None]
+        Callback function to be passed to the GradientDescent class, recoding the objective's value and parameters
+        at each iteration of the algorithm
+
+    values: List[np.ndarray]
+        Recorded objective values
+
+    weights: List[np.ndarray]
+        Recorded parameters
+    """
+    values = []
+    grads = []
+    weights_ = []
+
+    def callback(solver, weights, val, grad, t, eta, delta, batch_indices):
+        values.append(val)
+        grads.append(grad)
+        weights_.append(weights)
+
+    return callback, values, grads, weights_
 
 
 if __name__ == '__main__':
@@ -91,23 +122,100 @@ if __name__ == '__main__':
     # Question 5+6+7: Network with ReLU activations using SGD + recording convergence              #
     # ---------------------------------------------------------------------------------------------#
     # Initialize, fit and test network
-    raise NotImplementedError()
+    callback, values, grads, weights = get_gd_state_recorder_callback()
+
+    nn_1 = NeuralNetwork(
+        modules=[FullyConnectedLayer(input_dim=n_features, output_dim=64, activation=ReLU(),
+                                     include_intercept=True),
+                 FullyConnectedLayer(input_dim=64, output_dim=64, activation=ReLU(),
+                                     include_intercept=True),
+                 FullyConnectedLayer(input_dim=64, output_dim=n_classes, activation=Identity(),
+                                     include_intercept=True)],
+        loss_fn=CrossEntropyLoss(),
+        solver=StochasticGradientDescent(max_iter=10000, learning_rate=FixedLR(1e-1), callback=callback,
+                                         batch_size=256))
+
+    isSaved = True
+    import pickle
+
+    # check if network is saved in a file
+    if not isSaved:
+        nn_1.fit(train_X, train_y)
+
+        #  save network to pickle
+        with open('nn_1.pkl', 'wb') as f:
+            pickle.dump(nn_1.weights, f)
+    else:
+        with open('nn_1.pkl', 'rb') as f:
+            nn_1.weights = pickle.load(f)
+
+    print(accuracy(test_y, nn_1._predict(test_X)))
 
     # Plotting convergence process
-    raise NotImplementedError()
+    fig = go.Figure(data=[go.Scatter(x=list(range(len(values))), y=[np.sum(value) for value in values])],
+                    layout=go.Layout(title=r"$\text{Objective Function Convergence}$",
+                                     xaxis=dict(title=r"$\text{Iteration}$"),
+                                     yaxis=dict(title=r"$\text{Objective}$")))
+    # add norm of weights
+    fig.add_trace(go.Scatter(x=list(range(len(grads))), y=[np.linalg.norm(grad) for grad in grads]))
+    # fig.show()
 
     # Plotting test true- vs predicted confusion matrix
-    raise NotImplementedError()
+    conf_mat = confusion_matrix(test_y, nn_1._predict(test_X))
+    fig = go.Figure(data=[go.Heatmap(z=conf_mat,
+                                     x=list(range(n_classes)),
+                                     y=list(range(n_classes)))],
+                    layout=go.Layout(title=r"$\text{Confusion Matrix}$",
+                                     xaxis=dict(title=r"$\text{True}$"),
+                                     yaxis=dict(title=r"$\text{Predicted}$")))
+    # fig.show()
+
+
+    # print(np.unravel_index(np.argsort(conf_mat, axis=None)[:3], conf_mat.shape))
+    print("3 least confused:")
+    for i, j in zip(*np.unravel_index(np.argsort(conf_mat, axis=None)[:3], conf_mat.shape)):
+        print(f"{i} confused with {j}")
+
+    np.fill_diagonal(conf_mat, 0)
+    # print(np.unravel_index(np.argsort(conf_mat, axis=None)[-2:], conf_mat.shape))
+    print("2 most confused:")
+    for i, j in zip(*np.unravel_index(np.argsort(conf_mat, axis=None)[-2:], conf_mat.shape)):
+        print(f"{i} confused with {j}")
+
 
     # ---------------------------------------------------------------------------------------------#
     # Question 8: Network without hidden layers using SGD                                          #
     # ---------------------------------------------------------------------------------------------#
-    raise NotImplementedError()
+    # raise NotImplementedError()
 
     # ---------------------------------------------------------------------------------------------#
     # Question 9: Most/Least confident predictions                                                 #
     # ---------------------------------------------------------------------------------------------#
-    raise NotImplementedError()
+    # calculate confidence of network in each sample
+    confidences = nn_1.compute_prediction(test_X)
+    confidences = np.apply_along_axis(lambda x: np.max(x), 1, confidences)
+    print(confidences)
+    print(f"Most confident: {np.argmax(confidences)}")
+    print(f"Least confident: {np.argmin(confidences)}")
+    im = plot_images_grid(test_X[np.argmax(confidences)].reshape(1, 784), title="Most confident")
+    im.show()
+    im = plot_images_grid(test_X[np.argmin(confidences)].reshape(1, 784), title="Least confident")
+    im.show()
+
+    # leave only test_X where y = 7
+    test_X = test_X[test_y == 7]
+    test_y = test_y[test_y == 7]
+
+    # get 64 most confident samples
+    confidences = nn_1.compute_prediction(test_X)
+    confidences = np.apply_along_axis(lambda x: np.max(x), 1, confidences)
+
+    # plot 64 most confident samples
+    im = plot_images_grid(test_X[np.argsort(confidences)[-64:]].reshape(64, 784), title="Most confident")
+    im.show()
+    im = plot_images_grid(test_X[np.argsort(confidences)[:64]].reshape(64, 784), title="Least confident")
+    im.show()
+
 
     # ---------------------------------------------------------------------------------------------#
     # Question 10: GD vs GDS Running times                                                         #
