@@ -75,12 +75,11 @@ def cross_entropy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     epsilon = 0.00001  # arbitrary small value to use for clipping
     y_pred = np.clip(y_pred, epsilon, 5000)  # used to avoid overflow
 
+    # one hot encode y_true
     b = np.zeros_like(y_pred)
     b[np.arange(len(y_pred)), y_true] = 1
+
     return -np.sum(b * np.log(y_pred), axis=1)
-
-
-from scipy.special import softmax as maxsoftmax
 
 
 def softmax(X: np.ndarray) -> np.ndarray:
@@ -97,4 +96,3 @@ def softmax(X: np.ndarray) -> np.ndarray:
         Softmax(x) for every sample x in given data X
     """
     return np.exp(X) / np.sum(np.exp(X), axis=1, keepdims=True)
-    # return maxsoftmax(X, axis=1)

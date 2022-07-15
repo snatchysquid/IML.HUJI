@@ -114,6 +114,28 @@ def get_gd_state_recorder_callback() -> Tuple[Callable[[], None], List[np.ndarra
     return callback, values, grads, weights_
 
 
+def sgd_time_record(y) -> Tuple[Callable[[], None], List[np.ndarray], List[np.ndarray]]:
+    times = []
+    losses = []
+
+    def callback(solver, weights, val, grad, t, eta, delta, batch_indices):
+        times.append(time.time())
+        losses.append(np.mean(val))
+
+    return callback, times, losses
+
+
+def gd_time_record(y) -> Tuple[Callable[[], None], List[np.ndarray], List[np.ndarray]]:
+    times = []
+    losses = []
+
+    def callback(solver, weight, val, grad, t, eta, delta):
+        times.append(time.time())
+        losses.append(np.mean(val))
+
+    return callback, times, losses
+
+
 if __name__ == '__main__':
     train_X, train_y, test_X, test_y = load_mnist()
     (n_samples, n_features), n_classes = train_X.shape, 10
@@ -135,20 +157,22 @@ if __name__ == '__main__':
         solver=StochasticGradientDescent(max_iter=10000, learning_rate=FixedLR(1e-1), callback=callback,
                                          batch_size=256))
 
-    isSaved = True
-    import pickle
+    # used to save time (instead of retraining, use the weights from the previous run)
+    # isSaved = False
+    # import pickle
+    #
+    # # check if network is saved in a file
+    # if not isSaved:
+    #     nn_1.fit(train_X, train_y)
+    #
+    #     #  save network to pickle
+    #     with open('nn_1.pkl', 'wb') as f:
+    #         pickle.dump(nn_1.weights, f)
+    # else:
+    #     with open('nn_1.pkl', 'rb') as f:
+    #         nn_1.weights = pickle.load(f)
 
-    # check if network is saved in a file
-    if not isSaved:
-        nn_1.fit(train_X, train_y)
-
-        #  save network to pickle
-        with open('nn_1.pkl', 'wb') as f:
-            pickle.dump(nn_1.weights, f)
-    else:
-        with open('nn_1.pkl', 'rb') as f:
-            nn_1.weights = pickle.load(f)
-
+    nn_1.fit(train_X, train_y)
     print(accuracy(test_y, nn_1._predict(test_X)))
 
     # Plotting convergence process
@@ -158,7 +182,7 @@ if __name__ == '__main__':
                                      yaxis=dict(title=r"$\text{Objective}$")))
     # add norm of weights
     fig.add_trace(go.Scatter(x=list(range(len(grads))), y=[np.linalg.norm(grad) for grad in grads]))
-    # fig.show()
+    fig.show()
 
     # Plotting test true- vs predicted confusion matrix
     conf_mat = confusion_matrix(test_y, nn_1._predict(test_X))
@@ -168,7 +192,7 @@ if __name__ == '__main__':
                     layout=go.Layout(title=r"$\text{Confusion Matrix}$",
                                      xaxis=dict(title=r"$\text{True}$"),
                                      yaxis=dict(title=r"$\text{Predicted}$")))
-    # fig.show()
+    fig.show()
 
 
     # print(np.unravel_index(np.argsort(conf_mat, axis=None)[:3], conf_mat.shape))
@@ -186,7 +210,16 @@ if __name__ == '__main__':
     # ---------------------------------------------------------------------------------------------#
     # Question 8: Network without hidden layers using SGD                                          #
     # ---------------------------------------------------------------------------------------------#
-    # raise NotImplementedError()
+    callback, values, grads, weights = get_gd_state_recorder_callback()
+    nn_2 = NeuralNetwork(
+        modules=[FullyConnectedLayer(input_dim=n_features, output_dim=n_classes, activation=Identity(),
+                                     include_intercept=True)],
+        loss_fn=CrossEntropyLoss(),
+        solver=StochasticGradientDescent(max_iter=10000, learning_rate=FixedLR(1e-1), callback=callback,
+                                         batch_size=256))
+
+    nn_2.fit(train_X, train_y)
+    print(accuracy(test_y, nn_2._predict(test_X)))
 
     # ---------------------------------------------------------------------------------------------#
     # Question 9: Most/Least confident predictions                                                 #
@@ -216,8 +249,71 @@ if __name__ == '__main__':
     im = plot_images_grid(test_X[np.argsort(confidences)[:64]].reshape(64, 784), title="Least confident")
     im.show()
 
-
     # ---------------------------------------------------------------------------------------------#
     # Question 10: GD vs GDS Running times                                                         #
     # ---------------------------------------------------------------------------------------------#
-    raise NotImplementedError()
+    import pickle
+    train_X = train_X[:2500]
+    train_y = train_y[:2500]
+
+    gd_callback, gd_times, gd_losses = gd_time_record(train_y)
+
+    gd_nn = NeuralNetwork(
+        modules=[FullyConnectedLayer(input_dim=n_features, output_dim=64, activation=ReLU(),
+                                     include_intercept=True),
+                 FullyConnectedLayer(input_dim=64, output_dim=64, activation=ReLU(),
+                                     include_intercept=True),
+                 FullyConnectedLayer(input_dim=64, output_dim=n_classes, activation=Identity(),
+                                     include_intercept=True)],
+        loss_fn=CrossEntropyLoss(),
+        solver=GradientDescent(max_iter=10000, learning_rate=FixedLR(1e-1), callback=gd_callback, tol=1e-10))
+
+    gd_nn.fit(train_X, train_y)
+
+    # subtract gd_times[0] from gd_times to get running time of gd
+    gd_times = np.array(gd_times) - gd_times[0]
+    gd_losses = np.array(gd_losses)
+
+    # plot loss as function of runtime
+    fig = go.Figure(data=[go.Scatter(x=gd_times, y=gd_losses)],
+                    layout=go.Layout(title=r"$\text{Loss Function Convergence}$",
+                                     xaxis=dict(title=r"$\text{Runtime}$"),
+                                     yaxis=dict(title=r"$\text{Loss}$")))
+    fig.show()
+
+    # ---------------------------------------------------------------------------------------------#
+    sgd_callback, sgd_times, sgd_losses = sgd_time_record(train_y)
+
+    sgd_nn = NeuralNetwork(
+        modules=[FullyConnectedLayer(input_dim=n_features, output_dim=64, activation=ReLU(),
+                                     include_intercept=True),
+                 FullyConnectedLayer(input_dim=64, output_dim=64, activation=ReLU(),
+                                     include_intercept=True),
+                 FullyConnectedLayer(input_dim=64, output_dim=n_classes, activation=Identity(),
+                                     include_intercept=True)],
+        loss_fn=CrossEntropyLoss(),
+        solver=StochasticGradientDescent(max_iter=10000, learning_rate=FixedLR(1e-1), callback=sgd_callback,
+                                         batch_size=64, tol=1e-10))
+
+    sgd_nn.fit(train_X, train_y)
+
+    # subtract sgd_times[0] from sgd_times to get running time of sgd
+    sgd_times = np.array(sgd_times) - sgd_times[0]
+    sgd_losses = np.array(sgd_losses)
+
+    # plot loss as function of runtime
+    fig = go.Figure(data=[go.Scatter(x=sgd_times, y=sgd_losses)],
+                    layout=go.Layout(title=r"$\text{Loss Function Convergence}$",
+                                        xaxis=dict(title=r"$\text{Runtime}$"),
+                                        yaxis=dict(title=r"$\text{Loss}$")))
+    fig.show()
+
+    # plot loss as function of runtime
+    fig = go.Figure(data=[go.Scatter(x=gd_times, y=gd_losses), go.Scatter(x=sgd_times, y=sgd_losses)],
+                    layout=go.Layout(title=r"$\text{Loss Function Convergence}$",
+                                        xaxis=dict(title=r"$\text{Runtime}$"),
+                                        yaxis=dict(title=r"$\text{Loss}$")))
+
+    # add sgd to fig
+    fig.add_trace(go.Scatter(x=sgd_times, y=sgd_losses, name='SGD'))
+    fig.show()

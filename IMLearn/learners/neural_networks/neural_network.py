@@ -33,8 +33,9 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         self.loss_fn_ = loss_fn
         self.solver_ = solver
 
-        self.pre_activations_ = None
-        self.post_activations_ = None
+
+        self.pre_activations_ = None  # values before activation (w times samples) for each module
+        self.post_activations_ = None  # values after activation for each module
 
     # region BaseEstimator implementations
     def _fit(self, X: np.ndarray, y: np.ndarray) -> NoReturn:
@@ -66,6 +67,7 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         responses : ndarray of shape (n_samples, )
             Predicted labels of given samples
         """
+        # choose class with highest probability
         return np.argmax(self.compute_prediction(X=X), axis=1)
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
@@ -130,15 +132,19 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         output : ndarray of shape (n_samples, n_classes)
             Network's output values prior to the call of the loss function
         """
-        # pass X through network
-        self.pre_activations_ = []
-        self.post_activations_ = [X]  # todo: is X here or in pre_activations_?
 
+        self.pre_activations_ = []
+        self.post_activations_ = [X]  # for backpropagation X is considered the first layer's input
+
+        # pass X through network
         for module in self.modules_:
+            # add bias term to input
             if module.include_intercept_:
                 self.pre_activations_.append(np.concatenate((np.ones((X.shape[0], 1)), X), axis=1) @ module.weights)
             else:
                 self.pre_activations_.append(X @ module.weights)
+
+            # note: the module adds bias in the compute_output function so we don't do it on our own
             X = module.compute_output(X=X)
             self.post_activations_.append(X)
 
@@ -165,25 +171,37 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         Function depends on values calculated in forward pass and stored in
         `self.pre_activations_` and `self.post_activations_`
         """
-        self.compute_output(X=X, y=y, **kwargs)  # set up pre_activations_ and post_activations_
+        #################################################################################
+        #                                     NOTE                                      #
+        #       when we use einsum, the index k is used to iterate over the samples     #
+        #               so we do different matrix multiplications per sample            #
+        #################################################################################
 
-        # compute jacobian
-        partials = []
+        # start forward pass and set up pre_activations_ and post_activations_
+        self.compute_output(X=X, y=y, **kwargs)
+
+        partials = []  # array to store derivatives per layer
+
+        # initialize delta value (used to save up calculations in backpropagation)
         delta_T = self.loss_fn_.compute_jacobian(X=self.post_activations_[-1], y=y)
         delta_T = np.einsum('kjl,kl->kj', self.modules_[-1].activation_.compute_jacobian(X=self.pre_activations_[-1]), delta_T)
 
+        # backpropagate from last layer to first layer, note the index i starts from 1
         for i, module in enumerate(reversed(self.modules_), start=1):
-            if module.include_intercept_:
+            # calculate the derivative of objective with respect to the weights of the current layer
+            if module.include_intercept_:  # add bias term
                 final_partial = np.einsum('ki,kj->kij', delta_T, np.concatenate((np.ones((self.post_activations_[-i-1].shape[0], 1)), self.post_activations_[-i - 1]), axis=1))
             else:
                 final_partial = np.einsum('ki,kj->kij', delta_T, self.post_activations_[-i - 1])
 
-            partials.append(final_partial)
+            partials.append(final_partial)  # save the derivative
 
-            if i < len(self.modules_):
+            # update delta value
+
+            if i < len(self.modules_):  # in the last iter we don't update delta (+we can't, index error)
                 activation_derivative = self.modules_[-i-1].activation_.compute_jacobian(X=self.pre_activations_[-i-1])
 
-                if module.include_intercept_:
+                if module.include_intercept_:  # if there's a bias, don't use it since it doesn't affect previous layers
                     weights_times_delta = np.einsum('il,kl->ki', module.weights[1:, :], delta_T)
                     delta_T = np.einsum('kil,kl->ki', activation_derivative, weights_times_delta)
                 else:
@@ -193,9 +211,11 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         # reverse partials to get correct order
         partials = partials[::-1]
 
+        # get the average of the derivatives and transpose for correct shape
         for i in range(len(partials)):
             partials[i] = np.mean(partials[i], axis=0).T
 
+        # return the flattened array
         return self._flatten_parameters(partials)
 
     @property

@@ -56,7 +56,7 @@ class FullyConnectedLayer(BaseModule):
 
         # Initialize random weights
         if self.include_intercept_:
-            # TODO: should sigma^2 be 1/input_dim or 1/(input_dim + 1)?
+            # add dimension for bias
             self.weights = np.random.normal(0, 1 / (input_dim+1), (input_dim+1, output_dim))
         else:
             self.weights = np.random.normal(0, 1 / input_dim, (input_dim, output_dim))
@@ -78,6 +78,7 @@ class FullyConnectedLayer(BaseModule):
             Value of function at point self.weights
         """
         if self.include_intercept_:
+            # add intercept to input
             X = np.concatenate((np.ones((X.shape[0], 1)), X), axis=1)
 
         return self.activation_.compute_output(X=X @ self.weights, **kwargs)
@@ -98,7 +99,7 @@ class FullyConnectedLayer(BaseModule):
         """
         if self.include_intercept_:
             X = np.concatenate((np.ones((X.shape[0], 1)), X), axis=1)
-
+        
         return np.einsum('ki,kj->kij', X, self.activation_.compute_jacobian(X=X @ self.weights, **kwargs))
 
 
@@ -230,7 +231,9 @@ class CrossEntropyLoss(BaseModule):
             derivative of cross-entropy loss with respect to given input
         """
         soft = softmax(X)
+        # b does one-hot encoding of y
         b = np.zeros_like(soft)
         b[np.arange(soft.shape[0]), y] = 1
+
         return soft - b
 

@@ -113,16 +113,17 @@ class StochasticGradientDescent:
             - batch_indices: np.ndarray of shape (n_batch,)
                 Sample indices used in current SGD iteration
         """
-        self.t_ = 0
+        self.t_ = 0  # set iteration counter to 0
         n_samples = X.shape[0]
 
         prev_weights = None
 
         while self.t_ < self.max_iter_ and (self.t_ == 0 or np.linalg.norm(f.weights - prev_weights) > self.tol_):
-            prev_weights = f.weights  # TODO: should this be f.weights.copy()?
-            batch_indices = np.random.choice(n_samples, self.batch_size_, replace=False)
-            val, jac, eta = self._partial_fit(f=f, X=X[batch_indices], y=y[batch_indices], t=self.t_)
+            prev_weights = f.weights # save current weights
+            batch_indices = np.random.choice(n_samples, self.batch_size_, replace=False) # select random samples
+            val, jac, eta = self._partial_fit(f=f, X=X[batch_indices], y=y[batch_indices], t=self.t_)  # calculate partial derivative
 
+            # call callback function and increment iteration counter
             self.callback_(solver=self, weights=f.weights, val=val, grad=jac, t=self.t_, eta=eta, delta=np.linalg.norm(f.weights - prev_weights), batch_indices=batch_indices)
             self.t_ += 1
 
@@ -157,11 +158,13 @@ class StochasticGradientDescent:
         eta: float
             learning rate used at current iteration
         """
+        # calculate value of objective and jacobian according to batch
         val = f.compute_output(X=X, y=y)
         jac = f.compute_jacobian(X=X, y=y)
 
-        eta = self.learning_rate_.lr_step(t=t)
-        f.weights -= eta * jac
+
+        eta = self.learning_rate_.lr_step(t=t)  # get learning rate
+        f.weights -= eta * jac  # update weights
 
         return val, jac, eta
 
